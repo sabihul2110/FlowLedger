@@ -7,9 +7,11 @@ flowledger/
         LoansScreen.js
 */
 
-import { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Linking,
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
+  Linking, AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +24,9 @@ export default function LoansScreen() {
   const [loans, setLoans] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [filter, setFilter] = useState('all'); // all | lent | borrowed
+  const [filter, setFilter] = useState('all');
+  const pendingPayLoanId = useRef(null);
+  const appState = useRef(AppState.currentState);
 
   const load = async () => {
     const data = await getLoans();
@@ -31,17 +35,80 @@ export default function LoansScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
+  // AppState listener — fires when user returns from UPI app
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        if (pendingPayLoanId.current) {
+          const loanId = pendingPayLoanId.current;
+          pendingPayLoanId.current = null;
+          Alert.alert(
+            'Payment Confirmation',
+            'Did you complete the payment?',
+            [
+              { text: 'No', style: 'cancel' },
+              {
+                text: 'Yes — Settle & Delete',
+                onPress: async () => {
+                  await deleteLoan(loanId);
+                  load();
+                },
+              },
+            ]
+          );
+        }
+      }
+      appState.current = nextState;
+    });
+    return () => sub.remove();
+  }, []);
+
   const handleAdd = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Enter a name');
     if (!form.amount || isNaN(form.amount)) return Alert.alert('Error', 'Enter valid amount');
-    await saveLoan({ ...form, amount: parseFloat(form.amount) });
+    const saved = await saveLoan({ ...form, amount: parseFloat(form.amount) });
+
+    // Schedule 48hr reminder for lent loans
+    if (form.type === 'lent') {
+      await scheduleReminder(saved);
+    }
+
     setForm(EMPTY_FORM);
     setShowModal(false);
     load();
   };
 
+  const scheduleReminder = async (loan) => {
+    Alert.alert('Reminder Set', `You'll be reminded about ₹${loan.amount} from ${loan.name}.\n\n(Push notifications require a production build.)`);
+  };
+
+  const handleUPI = (loan) => {
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(loan.upi || '')}&pn=${encodeURIComponent(loan.name)}&am=${loan.amount}&cu=INR`;
+    pendingPayLoanId.current = loan.id;
+    Linking.openURL(upiUrl).catch(() => {
+      pendingPayLoanId.current = null;
+      Alert.alert('Error', 'No UPI app found on this device.');
+    });
+  };
+
+  const handleRemind = (loan) => {
+    Alert.alert(
+      'Remind ' + loan.name,
+      `Send a reminder that they owe you ₹${loan.amount}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Schedule Reminder',
+          onPress: () => scheduleReminder(loan).then(() =>
+            Alert.alert('Done', `Reminder set for 48 hours from now.`)
+          ),
+        },
+      ]
+    );
+  };
+
   const handleSettle = (id) => {
-    Alert.alert('Settle Loan', 'Mark this as settled?', [
+    Alert.alert('Settle Loan', 'Mark as settled?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Settle', onPress: async () => { await settleLoan(id); load(); } },
     ]);
@@ -54,22 +121,6 @@ export default function LoansScreen() {
     ]);
   };
 
-  const handleUPI = (loan) => {
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(loan.upi || '')}&pn=${encodeURIComponent(loan.name)}&am=${loan.amount}&cu=INR`;
-    Linking.openURL(upiUrl)
-      .then(() => {
-        Alert.alert(
-          'Payment Confirmation',
-          'Did you complete the payment?',
-          [
-            { text: 'No', style: 'cancel' },
-            { text: 'Yes', onPress: () => { settleLoan(loan.id); load(); } },
-          ]
-        );
-      })
-      .catch(() => Alert.alert('Error', 'No UPI app found on this device.'));
-  };
-
   const filtered = filter === 'all' ? loans : loans.filter(l => l.type === filter);
   const pending = loans.filter(l => l.status === 'pending');
   const totalLent = pending.filter(l => l.type === 'lent').reduce((s, l) => s + l.amount, 0);
@@ -77,8 +128,6 @@ export default function LoansScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-
-      {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Loans</Text>
         <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
@@ -86,7 +135,6 @@ export default function LoansScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Summary Row */}
       <View style={s.summaryRow}>
         <View style={s.summaryCard}>
           <Text style={s.summaryLabel}>You Lent</Text>
@@ -98,7 +146,6 @@ export default function LoansScreen() {
         </View>
       </View>
 
-      {/* Filter Tabs */}
       <View style={s.filterRow}>
         {['all', 'lent', 'borrowed'].map(f => (
           <TouchableOpacity
@@ -113,7 +160,6 @@ export default function LoansScreen() {
         ))}
       </View>
 
-      {/* Loans List */}
       <ScrollView style={s.list} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 && (
           <View style={s.empty}>
@@ -139,6 +185,7 @@ export default function LoansScreen() {
                 </Text>
               </View>
             </View>
+
             <View style={s.cardRight}>
               <Text style={loan.type === 'lent' ? s.amountGreen : s.amountRed}>
                 {loan.type === 'lent' ? '+' : '-'}₹{loan.amount.toLocaleString()}
@@ -148,9 +195,16 @@ export default function LoansScreen() {
                   <TouchableOpacity onPress={() => handleSettle(loan.id)} style={s.settleBtn}>
                     <Text style={s.settleBtnText}>Settle</Text>
                   </TouchableOpacity>
+
                   {loan.type === 'borrowed' && (
                     <TouchableOpacity onPress={() => handleUPI(loan)} style={s.settleBtn}>
                       <Text style={[s.settleBtnText, { color: '#ffb347' }]}>Pay</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {loan.type === 'lent' && (
+                    <TouchableOpacity onPress={() => handleRemind(loan)} style={s.settleBtn}>
+                      <Text style={[s.settleBtnText, { color: '#7c6aff' }]}>Remind</Text>
                     </TouchableOpacity>
                   )}
                 </>
@@ -164,16 +218,10 @@ export default function LoansScreen() {
         <View style={{ height: 30 }} />
       </ScrollView>
 
-      {/* Add Loan Modal */}
       <Modal visible={showModal} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={s.modalOverlay}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
           <View style={s.modalBox}>
             <Text style={s.modalTitle}>Add Loan</Text>
-
-            {/* Type Toggle */}
             <View style={s.typeRow}>
               {['lent', 'borrowed'].map(t => (
                 <TouchableOpacity
@@ -187,39 +235,10 @@ export default function LoansScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-
-            <TextInput
-              style={s.input}
-              placeholder="Person's name"
-              placeholderTextColor="#444"
-              value={form.name}
-              onChangeText={v => setForm(f => ({ ...f, name: v }))}
-            />
-            <TextInput
-              style={s.input}
-              placeholder="Amount (₹)"
-              placeholderTextColor="#444"
-              keyboardType="numeric"
-              value={form.amount}
-              onChangeText={v => setForm(f => ({ ...f, amount: v }))}
-            />
-            <TextInput
-              style={s.input}
-              placeholder="Note (optional)"
-              placeholderTextColor="#444"
-              value={form.note}
-              onChangeText={v => setForm(f => ({ ...f, note: v }))}
-            />
-
-            <TextInput
-              style={s.input}
-              placeholder="UPI ID (required to Pay)"
-              placeholderTextColor="#444"
-              autoCapitalize="none"
-              value={form.upi}
-              onChangeText={v => setForm(f => ({ ...f, upi: v }))}
-            />
-
+            <TextInput style={s.input} placeholder="Person's name" placeholderTextColor="#444" value={form.name} onChangeText={v => setForm(f => ({ ...f, name: v }))} />
+            <TextInput style={s.input} placeholder="Amount (₹)" placeholderTextColor="#444" keyboardType="numeric" value={form.amount} onChangeText={v => setForm(f => ({ ...f, amount: v }))} />
+            <TextInput style={s.input} placeholder="UPI ID (for Pay/Remind)" placeholderTextColor="#444" autoCapitalize="none" value={form.upi} onChangeText={v => setForm(f => ({ ...f, upi: v }))} />
+            <TextInput style={s.input} placeholder="Note (optional)" placeholderTextColor="#444" value={form.note} onChangeText={v => setForm(f => ({ ...f, note: v }))} />
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }}>
                 <Text style={s.cancelBtnText}>Cancel</Text>
@@ -231,7 +250,6 @@ export default function LoansScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
     </SafeAreaView>
   );
 }
@@ -241,23 +259,19 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800' },
   addBtn: { backgroundColor: '#00e5a0', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-
   summaryRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 16 },
   summaryCard: { flex: 1, backgroundColor: '#141414', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1f1f1f' },
   summaryLabel: { color: '#555', fontSize: 11, marginBottom: 4 },
   summaryGreen: { color: '#00e5a0', fontSize: 20, fontWeight: '700' },
   summaryRed: { color: '#ff6b6b', fontSize: 20, fontWeight: '700' },
-
   filterRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 16 },
   filterTab: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1f1f1f' },
   filterActive: { backgroundColor: '#00e5a0', borderColor: '#00e5a0' },
   filterText: { color: '#555', fontSize: 13 },
   filterTextActive: { color: '#0a0a0a', fontWeight: '700' },
-
   list: { flex: 1, paddingHorizontal: 20 },
   empty: { alignItems: 'center', marginTop: 80, gap: 12 },
   emptyText: { color: '#333', fontSize: 14 },
-
   card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#141414', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1f1f1f' },
   cardSettled: { opacity: 0.5 },
   cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
@@ -274,7 +288,6 @@ const s = StyleSheet.create({
   settleBtn: { backgroundColor: '#1f1f1f', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   settleBtnText: { color: '#00e5a0', fontSize: 11, fontWeight: '600' },
   deleteBtn: { padding: 4 },
-
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
   modalBox: { backgroundColor: '#141414', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
