@@ -49,3 +49,18 @@ export async function getBalanceSummary() {
   const totalOwed = active.filter(l => l.type === 'borrowed').reduce((s, l) => s + l.amount, 0);
   return { totalLent, totalOwed, net: totalLent - totalOwed };
 }
+
+export async function payPartial(id, amount) {
+  const loans = await getLoans();
+  const updated = loans.map(l => {
+    if (l.id !== id) return l;
+    const paid = (l.paid || 0) + amount;
+    const remaining = l.amount - paid;
+    return {
+      ...l,
+      paid,
+      status: remaining <= 0 ? 'settled' : 'pending',
+    };
+  });
+  await AsyncStorage.setItem(KEY, JSON.stringify(updated));
+}

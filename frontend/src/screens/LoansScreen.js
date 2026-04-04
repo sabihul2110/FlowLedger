@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { getLoans, saveLoan, settleLoan, deleteLoan } from '../store/loanStore';
+import { getLoans, saveLoan, settleLoan, deleteLoan, payPartial } from '../store/loanStore';
 
 const EMPTY_FORM = { name: '', amount: '', note: '', type: 'lent', upi: '' };
 
@@ -27,6 +27,9 @@ export default function LoansScreen() {
   const [filter, setFilter] = useState('all');
   const pendingPayLoanId = useRef(null);
   const appState = useRef(AppState.currentState);
+  const [partialModal, setPartialModal] = useState(false);
+  const [partialLoan, setPartialLoan] = useState(null);
+  const [partialInput, setPartialInput] = useState('');
 
   const load = async () => {
     const data = await getLoans();
@@ -40,17 +43,26 @@ export default function LoansScreen() {
     const sub = AppState.addEventListener('change', async (nextState) => {
       if (appState.current.match(/inactive|background/) && nextState === 'active') {
         if (pendingPayLoanId.current) {
-          const loanId = pendingPayLoanId.current;
+          const pending = pendingPayLoanId.current;
           pendingPayLoanId.current = null;
+
+          const isPartial = typeof pending === 'object';
+          const loanId = isPartial ? pending.id : pending;
+          const amt = isPartial ? pending.amt : null;
+
           Alert.alert(
             'Payment Confirmation',
             'Did you complete the payment?',
             [
               { text: 'No', style: 'cancel' },
               {
-                text: 'Yes — Settle & Delete',
+                text: 'Yes',
                 onPress: async () => {
-                  await deleteLoan(loanId);
+                  if (isPartial) {
+                    await payPartial(loanId, amt);
+                  } else {
+                    await deleteLoan(loanId);
+                  }
                   load();
                 },
               },
@@ -83,7 +95,8 @@ export default function LoansScreen() {
   };
 
   const handleUPI = (loan) => {
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(loan.upi || '')}&pn=${encodeURIComponent(loan.name)}&am=${loan.amount}&cu=INR`;
+    const remaining = loan.amount - (loan.paid || 0);
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(loan.upi || '')}&pn=${encodeURIComponent(loan.name)}&am=${remaining}&cu=INR`;
     pendingPayLoanId.current = loan.id;
     Linking.openURL(upiUrl).catch(() => {
       pendingPayLoanId.current = null;
@@ -112,6 +125,41 @@ export default function LoansScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Settle', onPress: async () => { await settleLoan(id); load(); } },
     ]);
+  };
+
+  const handlePartialPay = (loan) => {
+    setPartialLoan(loan);
+    setPartialInput('');
+    setPartialModal(true);
+  };
+
+  const confirmPartialPay = async () => {
+    const remaining = partialLoan.amount - (partialLoan.paid || 0);
+    const amt = parseFloat(partialInput);
+    if (isNaN(amt) || amt <= 0) return Alert.alert('Invalid amount');
+    if (amt > remaining) return Alert.alert('Error', `Max payable: ₹${remaining}`);
+
+    setPartialModal(false);
+
+    if (!partialLoan.upi || !partialLoan.upi.trim()) {
+      // No UPI — just update paid directly
+      await payPartial(partialLoan.id, amt);
+      setPartialLoan(null);
+      load();
+      return;
+    }
+
+    // Open UPI with partial amount
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(partialLoan.upi)}&pn=${encodeURIComponent(partialLoan.name)}&am=${amt}&cu=INR`;
+    
+    // Store partial amount to use after returning
+    pendingPayLoanId.current = { id: partialLoan.id, amt };
+    setPartialLoan(null);
+
+    Linking.openURL(upiUrl).catch(() => {
+      pendingPayLoanId.current = null;
+      Alert.alert('Error', 'No UPI app found.');
+    });
   };
 
   const handleDelete = (id) => {
@@ -188,20 +236,26 @@ export default function LoansScreen() {
 
             <View style={s.cardRight}>
               <Text style={loan.type === 'lent' ? s.amountGreen : s.amountRed}>
-                {loan.type === 'lent' ? '+' : '-'}₹{loan.amount.toLocaleString()}
+                {loan.type === 'lent' ? '+' : '-'}₹{(loan.amount - (loan.paid || 0)).toLocaleString()}
               </Text>
               {loan.status === 'pending' && (
                 <>
+                  {(loan.paid || 0) > 0 && (
+                    <Text style={{ color: '#ffb347', fontSize: 11 }}>
+                      Paid ₹{loan.paid} · Left ₹{loan.amount - loan.paid}
+                    </Text>
+                  )}
                   <TouchableOpacity onPress={() => handleSettle(loan.id)} style={s.settleBtn}>
                     <Text style={s.settleBtnText}>Settle</Text>
                   </TouchableOpacity>
-
+                  <TouchableOpacity onPress={() => handlePartialPay(loan)} style={s.settleBtn}>
+                    <Text style={[s.settleBtnText, { color: '#ffb347' }]}>Part Pay</Text>
+                  </TouchableOpacity>
                   {loan.type === 'borrowed' && (
                     <TouchableOpacity onPress={() => handleUPI(loan)} style={s.settleBtn}>
                       <Text style={[s.settleBtnText, { color: '#ffb347' }]}>Pay</Text>
                     </TouchableOpacity>
                   )}
-
                   {loan.type === 'lent' && (
                     <TouchableOpacity onPress={() => handleRemind(loan)} style={s.settleBtn}>
                       <Text style={[s.settleBtnText, { color: '#7c6aff' }]}>Remind</Text>
@@ -245,6 +299,34 @@ export default function LoansScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={s.saveBtn} onPress={handleAdd}>
                 <Text style={s.saveBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+      <Modal visible={partialModal} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Pay Partial Amount</Text>
+            {partialLoan && (
+              <Text style={{ color: '#555', marginBottom: 12 }}>
+                Total: ₹{partialLoan.amount} · Paid: ₹{partialLoan.paid || 0} · Remaining: ₹{partialLoan.amount - (partialLoan.paid || 0)}
+              </Text>
+            )}
+            <TextInput
+              style={s.input}
+              placeholder="Amount to pay"
+              placeholderTextColor="#444"
+              keyboardType="numeric"
+              value={partialInput}
+              onChangeText={setPartialInput}
+            />
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => setPartialModal(false)}>
+                <Text style={s.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.saveBtn} onPress={confirmPartialPay}>
+                <Text style={s.saveBtnText}>Pay</Text>
               </TouchableOpacity>
             </View>
           </View>

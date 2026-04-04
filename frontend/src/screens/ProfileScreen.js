@@ -12,6 +12,9 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Alert, Switch,
 } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as DocumentPicker from 'expo-document-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -67,6 +70,80 @@ export default function ProfileScreen() {
         }
       },
     ]);
+  };
+
+  const handleExport = async () => {
+    try {
+      const loans = await getLoans();
+      const expenses = await getExpenses();
+      const friends = await getFriends();
+
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        version: '1.0.0',
+        loans,
+        expenses,
+        friends,
+      };
+
+      const json = JSON.stringify(exportData, null, 2);
+      const fileUri = FileSystem.documentDirectory + 'flowledger_export.json';
+
+      await FileSystem.writeAsStringAsync(fileUri, json, {
+        encoding: 'utf8',
+      });
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Error', 'Sharing is not available on this device.');
+        return;
+      }
+
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'application/json',
+        dialogTitle: 'Export FlowLedger Data',
+      });
+    } catch (e) {
+      Alert.alert('Export Failed', e.message);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/json',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const fileUri = result.assets[0].uri;
+      const raw = await FileSystem.readAsStringAsync(fileUri, { encoding: 'utf8' });
+      const parsed = JSON.parse(raw);
+
+      if (!Array.isArray(parsed.loans) || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.friends)) {
+        return Alert.alert('Invalid backup file', 'File structure is not valid.');
+      }
+
+      Alert.alert(
+        'Import Data',
+        'This will replace ALL existing data. Continue?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Replace', style: 'destructive', onPress: async () => {
+              await AsyncStorage.setItem('flowledger_loans', JSON.stringify(parsed.loans));
+              await AsyncStorage.setItem('flowledger_expenses', JSON.stringify(parsed.expenses));
+              await AsyncStorage.setItem('flowledger_friends', JSON.stringify(parsed.friends));
+              load();
+              Alert.alert('Success', 'Data imported successfully.');
+            }
+          },
+        ]
+      );
+    } catch (e) {
+      Alert.alert('Import Failed', e.message);
+    }
   };
 
   return (
@@ -159,6 +236,14 @@ export default function ProfileScreen() {
         {/* Danger Zone */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>Danger Zone</Text>
+          <TouchableOpacity style={s.exportBtn} onPress={handleExport}>
+            <Ionicons name="download-outline" size={16} color="#00e5a0" />
+            <Text style={s.exportText}>Export All Data (JSON)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.exportBtn} onPress={handleImport}>
+            <Ionicons name="upload-outline" size={16} color="#7c6aff" />
+            <Text style={[s.exportText, { color: '#7c6aff' }]}>Import Data (JSON)</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={s.dangerBtn} onPress={handleClearAll}>
             <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
             <Text style={s.dangerText}>Clear All Data</Text>
@@ -196,4 +281,6 @@ const s = StyleSheet.create({
   infoValue: { color: '#fff', fontSize: 14 },
   dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#ff6b6b15', borderRadius: 10, borderWidth: 1, borderColor: '#ff6b6b30' },
   dangerText: { color: '#ff6b6b', fontWeight: '600' },
+  exportBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#00e5a015', borderRadius: 10, borderWidth: 1, borderColor: '#00e5a030', marginBottom: 10 },
+  exportText: { color: '#00e5a0', fontWeight: '600' },
 });
