@@ -7,21 +7,25 @@ flowledger/
         ProfileScreen.js
 */
 
-import { useState, useCallback } from 'react';
-import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  TextInput, Alert, Switch,
-} from 'react-native';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as DocumentPicker from 'expo-document-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLoans, getBalanceSummary } from '../store/loanStore';
+import { useFocusEffect } from '@react-navigation/native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import { useCallback, useState } from 'react';
+import {
+  Alert,
+  ScrollView, StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getExpenses, getMonthSummary } from '../store/expenseStore';
 import { getFriends } from '../store/friendStore';
+import { getBalanceSummary, getLoans } from '../store/loanStore';
 
 const PROFILE_KEY = 'flowledger_profile';
 
@@ -204,11 +208,11 @@ export default function ProfileScreen() {
         {/* Stats Grid */}
         <View style={s.statsGrid}>
           {[
-            { label: 'Total Loans', value: stats.loans, icon: 'wallet-outline', color: '#00e5a0' },
-            { label: 'Expenses', value: stats.expenses, icon: 'receipt-outline', color: '#7c6aff' },
-            { label: 'Friends', value: stats.friends, icon: 'people-outline', color: '#ffb347' },
-            { label: 'Total Lent', value: `₹${stats.totalLent.toLocaleString()}`, icon: 'arrow-up-circle-outline', color: '#00e5a0' },
-            { label: 'This Month', value: `₹${stats.monthSpend.toLocaleString()}`, icon: 'calendar-outline', color: '#7c6aff' },
+            { label: 'Total Loans', value: stats.loans, icon: 'wallet-outline', color: '#34d399' },
+            { label: 'Expenses', value: stats.expenses, icon: 'receipt-outline', color: '#818cf8' },
+            { label: 'Friends', value: stats.friends, icon: 'people-outline', color: '#fbbf24' },
+            { label: 'Total Lent', value: `₹${stats.totalLent.toLocaleString()}`, icon: 'arrow-up-circle-outline', color: '#34d399' },
+            { label: 'This Month', value: `₹${stats.monthSpend.toLocaleString()}`, icon: 'calendar-outline', color: '#818cf8' },
           ].map(stat => (
             <View key={stat.label} style={s.statCard}>
               <Ionicons name={stat.icon} size={20} color={stat.color} />
@@ -237,15 +241,15 @@ export default function ProfileScreen() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Danger Zone</Text>
           <TouchableOpacity style={s.exportBtn} onPress={handleExport}>
-            <Ionicons name="download-outline" size={16} color="#00e5a0" />
+            <Ionicons name="download-outline" size={16} color="#34d399" />
             <Text style={s.exportText}>Export All Data (JSON)</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.exportBtn} onPress={handleImport}>
-            <Ionicons name="upload-outline" size={16} color="#7c6aff" />
-            <Text style={[s.exportText, { color: '#7c6aff' }]}>Import Data (JSON)</Text>
+            <Ionicons name="upload-outline" size={16} color="#818cf8" />
+            <Text style={[s.exportText, { color: '#818cf8' }]}>Import Data (JSON)</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.dangerBtn} onPress={handleClearAll}>
-            <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
+            <Ionicons name="trash-outline" size={16} color="#f87171" />
             <Text style={s.dangerText}>Clear All Data</Text>
           </TouchableOpacity>
         </View>
@@ -257,30 +261,30 @@ export default function ProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0a0a0a' },
+  safe: { flex: 1, backgroundColor: '#0d0d0d' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  editBtn: { color: '#00e5a0', fontSize: 15, fontWeight: '600' },
+  editBtn: { color: '#34d399', fontSize: 15, fontWeight: '600' },
   avatarSection: { alignItems: 'center', paddingVertical: 28 },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#00e5a020', borderWidth: 2, borderColor: '#00e5a0', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
-  avatarText: { color: '#00e5a0', fontSize: 28, fontWeight: '800' },
+  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#34d39920', borderWidth: 2, borderColor: '#34d399', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  avatarText: { color: '#34d399', fontSize: 28, fontWeight: '800' },
   profileName: { color: '#fff', fontSize: 22, fontWeight: '700' },
   profileSub: { color: '#444', fontSize: 13, marginTop: 4 },
   editFields: { width: '100%', paddingHorizontal: 20, gap: 10 },
-  input: { backgroundColor: '#141414', borderRadius: 12, padding: 14, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#1f1f1f' },
+  input: { backgroundColor: '#1a1a1a', borderRadius: 12, padding: 14, color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#262626' },
   cancelEdit: { alignItems: 'center', paddingVertical: 10 },
   cancelEditText: { color: '#555', fontSize: 14 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 10, marginBottom: 24 },
-  statCard: { width: '30%', flex: 1, minWidth: '28%', backgroundColor: '#141414', borderRadius: 14, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#1f1f1f' },
+  statCard: { width: '30%', flex: 1, minWidth: '28%', backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#262626' },
   statValue: { fontSize: 18, fontWeight: '800' },
   statLabel: { color: '#444', fontSize: 10, textAlign: 'center' },
-  section: { marginHorizontal: 20, marginBottom: 20, backgroundColor: '#141414', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#1f1f1f' },
+  section: { marginHorizontal: 20, marginBottom: 20, backgroundColor: '#1a1a1a', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#262626' },
   sectionTitle: { color: '#555', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 14 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1a1a1a' },
   infoLabel: { color: '#666', fontSize: 14 },
   infoValue: { color: '#fff', fontSize: 14 },
-  dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#ff6b6b15', borderRadius: 10, borderWidth: 1, borderColor: '#ff6b6b30' },
-  dangerText: { color: '#ff6b6b', fontWeight: '600' },
-  exportBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#00e5a015', borderRadius: 10, borderWidth: 1, borderColor: '#00e5a030', marginBottom: 10 },
-  exportText: { color: '#00e5a0', fontWeight: '600' },
+  dangerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#f8717115', borderRadius: 10, borderWidth: 1, borderColor: '#f8717130' },
+  dangerText: { color: '#f87171', fontWeight: '600' },
+  exportBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, backgroundColor: '#34d39915', borderRadius: 10, borderWidth: 1, borderColor: '#34d39930', marginBottom: 10 },
+  exportText: { color: '#34d399', fontWeight: '600' },
 });

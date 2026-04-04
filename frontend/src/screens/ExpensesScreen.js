@@ -7,15 +7,22 @@ flowledger/
         ExpensesScreen.js
 */
 
-import { useState, useCallback } from 'react';
-import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { getExpenses, saveExpense, deleteExpense, getMonthSummary, CATEGORIES } from '../store/expenseStore';
+import { useCallback, useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView, StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CATEGORIES, deleteExpense, getExpenses, getMonthSummary, saveExpense } from '../store/expenseStore';
 
 const CATEGORY_ICONS = {
   Food: 'fast-food-outline',
@@ -27,10 +34,10 @@ const CATEGORY_ICONS = {
 };
 
 const CATEGORY_COLORS = {
-  Food: '#ff6b6b',
-  Travel: '#ffb347',
-  Shopping: '#7c6aff',
-  Bills: '#00e5a0',
+  Food: '#f87171',
+  Travel: '#fbbf24',
+  Shopping: '#818cf8',
+  Bills: '#34d399',
   Health: '#ff85a1',
   Other: '#888',
 };
@@ -78,7 +85,7 @@ export default function ExpensesScreen() {
       <View style={s.header}>
         <Text style={s.title}>Expenses</Text>
         <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
-          <Ionicons name="add" size={22} color="#0a0a0a" />
+          <Ionicons name="add" size={22} color="#0d0d0d" />
         </TouchableOpacity>
       </View>
 
@@ -218,29 +225,29 @@ export default function ExpensesScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0a0a0a' },
+  safe: { flex: 1, backgroundColor: '#0d0d0d' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  addBtn: { backgroundColor: '#7c6aff', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  card: { backgroundColor: '#141414', borderRadius: 20, padding: 22, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#1f1f1f' },
+  addBtn: { backgroundColor: '#818cf8', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  card: { backgroundColor: '#1a1a1a', borderRadius: 20, padding: 22, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#262626' },
   cardLabel: { color: '#666', fontSize: 12, letterSpacing: 1 },
-  cardAmount: { color: '#7c6aff', fontSize: 36, fontWeight: '800', marginTop: 6 },
+  cardAmount: { color: '#818cf8', fontSize: 36, fontWeight: '800', marginTop: 6 },
   cardSub: { color: '#444', fontSize: 12, marginTop: 2, marginBottom: 16 },
   catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  catChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#1f1f1f', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  catChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#262626', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   catChipText: { color: '#888', fontSize: 11 },
   catChipAmt: { fontSize: 11, fontWeight: '700' },
   noData: { color: '#333', fontSize: 13 },
   filterScroll: { marginBottom: 12 },
   filterContent: { paddingHorizontal: 20, gap: 8 },
-  filterTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1f1f1f' },
-  filterActive: { backgroundColor: '#7c6aff', borderColor: '#7c6aff' },
+  filterTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#262626' },
+  filterActive: { backgroundColor: '#818cf8', borderColor: '#818cf8' },
   filterText: { color: '#555', fontSize: 13 },
   filterTextActive: { color: '#fff', fontWeight: '700' },
   list: { paddingHorizontal: 20 },
   empty: { alignItems: 'center', marginTop: 60, gap: 12 },
   emptyText: { color: '#333', fontSize: 14 },
-  expRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1f1f1f' },
+  expRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#262626' },
   expIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   expInfo: { flex: 1 },
   expTitle: { color: '#fff', fontWeight: '600', fontSize: 14 },
@@ -249,14 +256,14 @@ const s = StyleSheet.create({
   expAmount: { color: '#fff', fontWeight: '700', fontSize: 15 },
   inputLabel: { color: '#555', fontSize: 12, marginBottom: 8 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
-  modalBox: { backgroundColor: '#141414', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalBox: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
-  input: { backgroundColor: '#1f1f1f', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
-  catBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1f1f1f', borderWidth: 1, borderColor: '#2a2a2a' },
+  input: { backgroundColor: '#262626', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
+  catBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#262626', borderWidth: 1, borderColor: '#2a2a2a' },
   catBtnText: { color: '#555', fontSize: 12 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#1f1f1f', alignItems: 'center' },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#262626', alignItems: 'center' },
   cancelBtnText: { color: '#555', fontWeight: '600' },
-  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#7c6aff', alignItems: 'center' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#818cf8', alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '800' },
 });
