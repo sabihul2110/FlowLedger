@@ -7,17 +7,256 @@ flowledger/
         ExpensesScreen.js
 */
 
-import { View, Text, StyleSheet } from 'react-native';
+import { useState, useCallback } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { getExpenses, saveExpense, deleteExpense, getMonthSummary, CATEGORIES } from '../store/expenseStore';
+
+const CATEGORY_ICONS = {
+  Food: 'fast-food-outline',
+  Travel: 'car-outline',
+  Shopping: 'bag-outline',
+  Bills: 'flash-outline',
+  Health: 'medkit-outline',
+  Other: 'ellipsis-horizontal-outline',
+};
+
+const CATEGORY_COLORS = {
+  Food: '#ff6b6b',
+  Travel: '#ffb347',
+  Shopping: '#7c6aff',
+  Bills: '#00e5a0',
+  Health: '#ff85a1',
+  Other: '#888',
+};
+
+const EMPTY_FORM = { title: '', amount: '', category: 'Food', note: '' };
 
 export default function ExpensesScreen() {
+  const [expenses, setExpenses] = useState([]);
+  const [summary, setSummary] = useState({ total: 0, byCategory: {}, count: 0 });
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [filterCat, setFilterCat] = useState('All');
+
+  const load = async () => {
+    const data = await getExpenses();
+    setExpenses(data);
+    const s = await getMonthSummary();
+    setSummary(s);
+  };
+
+  useFocusEffect(useCallback(() => { load(); }, []));
+
+  const handleAdd = async () => {
+    if (!form.title.trim()) return Alert.alert('Error', 'Enter a title');
+    if (!form.amount || isNaN(form.amount)) return Alert.alert('Error', 'Enter valid amount');
+    await saveExpense({ ...form, amount: parseFloat(form.amount) });
+    setForm(EMPTY_FORM);
+    setShowModal(false);
+    load();
+  };
+
+  const handleDelete = (id) => {
+    Alert.alert('Delete', 'Delete this expense?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteExpense(id); load(); } },
+    ]);
+  };
+
+  const filtered = filterCat === 'All' ? expenses : expenses.filter(e => e.category === filterCat);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Home</Text>
-    </View>
+    <SafeAreaView style={s.safe}>
+
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.title}>Expenses</Text>
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
+          <Ionicons name="add" size={22} color="#0a0a0a" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+
+        {/* Month Summary Card */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>THIS MONTH</Text>
+          <Text style={s.cardAmount}>₹{summary.total.toLocaleString()}</Text>
+          <Text style={s.cardSub}>{summary.count} transactions</Text>
+
+          {/* Category Breakdown */}
+          <View style={s.catGrid}>
+            {CATEGORIES.filter(c => summary.byCategory[c] > 0).map(c => (
+              <View key={c} style={s.catChip}>
+                <Ionicons name={CATEGORY_ICONS[c]} size={13} color={CATEGORY_COLORS[c]} />
+                <Text style={s.catChipText}>{c}</Text>
+                <Text style={[s.catChipAmt, { color: CATEGORY_COLORS[c] }]}>
+                  ₹{summary.byCategory[c].toLocaleString()}
+                </Text>
+              </View>
+            ))}
+            {CATEGORIES.every(c => !summary.byCategory[c]) && (
+              <Text style={s.noData}>No expenses this month</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Category Filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll} contentContainerStyle={s.filterContent}>
+          {['All', ...CATEGORIES].map(c => (
+            <TouchableOpacity
+              key={c}
+              style={[s.filterTab, filterCat === c && s.filterActive]}
+              onPress={() => setFilterCat(c)}
+            >
+              <Text style={[s.filterText, filterCat === c && s.filterTextActive]}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Expenses List */}
+        <View style={s.list}>
+          {filtered.length === 0 && (
+            <View style={s.empty}>
+              <Ionicons name="receipt-outline" size={48} color="#222" />
+              <Text style={s.emptyText}>No expenses yet</Text>
+            </View>
+          )}
+          {filtered.map(exp => (
+            <View key={exp.id} style={s.expRow}>
+              <View style={[s.expIcon, { backgroundColor: CATEGORY_COLORS[exp.category] + '20' }]}>
+                <Ionicons name={CATEGORY_ICONS[exp.category]} size={18} color={CATEGORY_COLORS[exp.category]} />
+              </View>
+              <View style={s.expInfo}>
+                <Text style={s.expTitle}>{exp.title}</Text>
+                <Text style={s.expMeta}>
+                  {exp.category}
+                  {exp.note ? ` · ${exp.note}` : ''}
+                  {' · '}
+                  {new Date(exp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                </Text>
+              </View>
+              <View style={s.expRight}>
+                <Text style={s.expAmount}>₹{exp.amount.toLocaleString()}</Text>
+                <TouchableOpacity onPress={() => handleDelete(exp.id)}>
+                  <Ionicons name="trash-outline" size={14} color="#333" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+        <View style={{ height: 30 }} />
+      </ScrollView>
+
+      {/* Add Expense Modal */}
+      <Modal visible={showModal} animationType="slide" transparent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Add Expense</Text>
+
+            <TextInput
+              style={s.input}
+              placeholder="Title (e.g. Lunch)"
+              placeholderTextColor="#444"
+              value={form.title}
+              onChangeText={v => setForm(f => ({ ...f, title: v }))}
+            />
+            <TextInput
+              style={s.input}
+              placeholder="Amount (₹)"
+              placeholderTextColor="#444"
+              keyboardType="numeric"
+              value={form.amount}
+              onChangeText={v => setForm(f => ({ ...f, amount: v }))}
+            />
+
+            {/* Category Picker */}
+            <Text style={s.inputLabel}>Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {CATEGORIES.map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[s.catBtn, form.category === c && { borderColor: CATEGORY_COLORS[c], backgroundColor: CATEGORY_COLORS[c] + '20' }]}
+                    onPress={() => setForm(f => ({ ...f, category: c }))}
+                  >
+                    <Ionicons name={CATEGORY_ICONS[c]} size={14} color={form.category === c ? CATEGORY_COLORS[c] : '#555'} />
+                    <Text style={[s.catBtnText, form.category === c && { color: CATEGORY_COLORS[c] }]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <TextInput
+              style={s.input}
+              placeholder="Note (optional)"
+              placeholderTextColor="#444"
+              value={form.note}
+              onChangeText={v => setForm(f => ({ ...f, note: v }))}
+            />
+
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }}>
+                <Text style={s.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.saveBtn} onPress={handleAdd}>
+                <Text style={s.saveBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0f0f' },
-  text: { color: '#fff', fontSize: 18 },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#0a0a0a' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
+  title: { color: '#fff', fontSize: 24, fontWeight: '800' },
+  addBtn: { backgroundColor: '#7c6aff', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  card: { backgroundColor: '#141414', borderRadius: 20, padding: 22, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#1f1f1f' },
+  cardLabel: { color: '#666', fontSize: 12, letterSpacing: 1 },
+  cardAmount: { color: '#7c6aff', fontSize: 36, fontWeight: '800', marginTop: 6 },
+  cardSub: { color: '#444', fontSize: 12, marginTop: 2, marginBottom: 16 },
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  catChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#1f1f1f', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  catChipText: { color: '#888', fontSize: 11 },
+  catChipAmt: { fontSize: 11, fontWeight: '700' },
+  noData: { color: '#333', fontSize: 13 },
+  filterScroll: { marginBottom: 12 },
+  filterContent: { paddingHorizontal: 20, gap: 8 },
+  filterTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#141414', borderWidth: 1, borderColor: '#1f1f1f' },
+  filterActive: { backgroundColor: '#7c6aff', borderColor: '#7c6aff' },
+  filterText: { color: '#555', fontSize: 13 },
+  filterTextActive: { color: '#fff', fontWeight: '700' },
+  list: { paddingHorizontal: 20 },
+  empty: { alignItems: 'center', marginTop: 60, gap: 12 },
+  emptyText: { color: '#333', fontSize: 14 },
+  expRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141414', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#1f1f1f' },
+  expIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  expInfo: { flex: 1 },
+  expTitle: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  expMeta: { color: '#444', fontSize: 12, marginTop: 2 },
+  expRight: { alignItems: 'flex-end', gap: 6 },
+  expAmount: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  inputLabel: { color: '#555', fontSize: 12, marginBottom: 8 },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
+  modalBox: { backgroundColor: '#141414', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
+  input: { backgroundColor: '#1f1f1f', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
+  catBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1f1f1f', borderWidth: 1, borderColor: '#2a2a2a' },
+  catBtnText: { color: '#555', fontSize: 12 },
+  modalBtns: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#1f1f1f', alignItems: 'center' },
+  cancelBtnText: { color: '#555', fontWeight: '600' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#7c6aff', alignItems: 'center' },
+  saveBtnText: { color: '#fff', fontWeight: '800' },
 });
