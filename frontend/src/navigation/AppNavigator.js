@@ -17,6 +17,7 @@ import LoanDetailScreen from '../screens/LoanDetailScreen';
 import ExpensesScreen from '../screens/ExpensesScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import InsightsScreen from '../screens/InsightsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -32,6 +33,7 @@ function LoansStack() {
 
 const ICONS = {
   Home: ['home', 'home-outline'],
+  Insights: ['bar-chart', 'bar-chart-outline'],
   Loans: ['wallet', 'wallet-outline'],
   Expenses: ['receipt', 'receipt-outline'],
   Friends: ['people', 'people-outline'],
@@ -56,6 +58,7 @@ export default function AppNavigator() {
       <Tab.Screen name="Loans" component={LoansStack} />
       <Tab.Screen name="Expenses" component={ExpensesScreen} />
       <Tab.Screen name="Friends" component={FriendsScreen} />
+      <Tab.Screen name="Insights" component={InsightsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
