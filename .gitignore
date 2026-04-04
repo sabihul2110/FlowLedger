@@ -1,0 +1,19 @@
+# Expo / React Native
+frontend/node_modules/
+frontend/.expo/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/*.log
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Backend (for later)
+backend/__pycache__/
+backend/venv/
+backend/*.db
+backend/.env
