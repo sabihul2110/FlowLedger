@@ -7,22 +7,16 @@ flowledger/
         ExpensesScreen.js
 */
 
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView, StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CATEGORIES, deleteExpense, getExpenses, getMonthSummary, saveExpense } from '../store/expenseStore';
+import { Ionicons } from '@expo/vector-icons';
+import { CATEGORIES, deleteExpense, saveExpense } from '../store/expenseStore';
+import { getMonthOptions } from '../utils/dateHelpers';
+import useExpenses from '../hooks/useExpenses';
 
 const CATEGORY_ICONS = {
   Food: 'fast-food-outline',
@@ -45,20 +39,23 @@ const CATEGORY_COLORS = {
 const EMPTY_FORM = { title: '', amount: '', category: 'Food', note: '' };
 
 export default function ExpensesScreen() {
-  const [expenses, setExpenses] = useState([]);
-  const [summary, setSummary] = useState({ total: 0, byCategory: {}, count: 0 });
+  const now = new Date();
+  const [selMonth, setSelMonth] = useState(now.getMonth());
+  const [selYear, setSelYear] = useState(now.getFullYear());
+  const [filterCat, setFilterCat] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [filterCat, setFilterCat] = useState('All');
 
-  const load = async () => {
-    const data = await getExpenses();
-    setExpenses(data);
-    const s = await getMonthSummary();
-    setSummary(s);
-  };
+  const monthOptions = getMonthOptions(6);
+  const { expenses, reload } = useExpenses(selMonth, selYear);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  // Compute summary from hook data
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const byCategory = {};
+  CATEGORIES.forEach(c => { byCategory[c] = 0; });
+  expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category] || 0) + e.amount; });
+
+  const filtered = filterCat === 'All' ? expenses : expenses.filter(e => e.category === filterCat);
 
   const handleAdd = async () => {
     if (!form.title.trim()) return Alert.alert('Error', 'Enter a title');
@@ -66,17 +63,15 @@ export default function ExpensesScreen() {
     await saveExpense({ ...form, amount: parseFloat(form.amount) });
     setForm(EMPTY_FORM);
     setShowModal(false);
-    load();
+    reload();
   };
 
   const handleDelete = (id) => {
     Alert.alert('Delete', 'Delete this expense?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteExpense(id); load(); } },
+      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteExpense(id); reload(); } },
     ]);
   };
-
-  const filtered = filterCat === 'All' ? expenses : expenses.filter(e => e.category === filterCat);
 
   return (
     <SafeAreaView style={s.safe}>
@@ -91,31 +86,42 @@ export default function ExpensesScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
 
-        {/* Month Summary Card */}
-        <View style={s.card}>
-          <Text style={s.cardLabel}>THIS MONTH</Text>
-          <Text style={s.cardAmount}>₹{summary.total.toLocaleString()}</Text>
-          <Text style={s.cardSub}>{summary.count} transactions</Text>
+        {/* Month Selector */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.monthRow}>
+          {monthOptions.map(opt => (
+            <TouchableOpacity
+              key={`${opt.month}-${opt.year}`}
+              style={[s.filterTab, selMonth === opt.month && selYear === opt.year && s.monthActive]}
+              onPress={() => { setSelMonth(opt.month); setSelYear(opt.year); }}
+            >
+              <Text style={[s.filterText, selMonth === opt.month && selYear === opt.year && s.filterTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
-          {/* Category Breakdown */}
+        {/* Summary Card */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>TOTAL SPENT</Text>
+          <Text style={s.cardAmount}>₹{total.toLocaleString()}</Text>
+          <Text style={s.cardSub}>{expenses.length} transactions</Text>
           <View style={s.catGrid}>
-            {CATEGORIES.filter(c => summary.byCategory[c] > 0).map(c => (
+            {CATEGORIES.filter(c => byCategory[c] > 0).map(c => (
               <View key={c} style={s.catChip}>
                 <Ionicons name={CATEGORY_ICONS[c]} size={13} color={CATEGORY_COLORS[c]} />
                 <Text style={s.catChipText}>{c}</Text>
-                <Text style={[s.catChipAmt, { color: CATEGORY_COLORS[c] }]}>
-                  ₹{summary.byCategory[c].toLocaleString()}
-                </Text>
+                <Text style={[s.catChipAmt, { color: CATEGORY_COLORS[c] }]}>₹{byCategory[c].toLocaleString()}</Text>
               </View>
             ))}
-            {CATEGORIES.every(c => !summary.byCategory[c]) && (
-              <Text style={s.noData}>No expenses this month</Text>
+            {CATEGORIES.every(c => !byCategory[c]) && (
+              <Text style={s.noData}>No expenses this period</Text>
             )}
           </View>
         </View>
 
         {/* Category Filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll} contentContainerStyle={s.filterContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.catFilterRow}>
           {['All', ...CATEGORIES].map(c => (
             <TouchableOpacity
               key={c}
@@ -127,12 +133,12 @@ export default function ExpensesScreen() {
           ))}
         </ScrollView>
 
-        {/* Expenses List */}
+        {/* List */}
         <View style={s.list}>
           {filtered.length === 0 && (
             <View style={s.empty}>
               <Ionicons name="receipt-outline" size={48} color="#222" />
-              <Text style={s.emptyText}>No expenses yet</Text>
+              <Text style={s.emptyText}>No expenses</Text>
             </View>
           )}
           {filtered.map(exp => (
@@ -143,10 +149,7 @@ export default function ExpensesScreen() {
               <View style={s.expInfo}>
                 <Text style={s.expTitle}>{exp.title}</Text>
                 <Text style={s.expMeta}>
-                  {exp.category}
-                  {exp.note ? ` · ${exp.note}` : ''}
-                  {' · '}
-                  {new Date(exp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  {exp.category}{exp.note ? ` · ${exp.note}` : ''} · {new Date(exp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 </Text>
               </View>
               <View style={s.expRight}>
@@ -161,29 +164,13 @@ export default function ExpensesScreen() {
         <View style={{ height: 30 }} />
       </ScrollView>
 
-      {/* Add Expense Modal */}
+      {/* Add Modal */}
       <Modal visible={showModal} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
           <View style={s.modalBox}>
             <Text style={s.modalTitle}>Add Expense</Text>
-
-            <TextInput
-              style={s.input}
-              placeholder="Title (e.g. Lunch)"
-              placeholderTextColor="#444"
-              value={form.title}
-              onChangeText={v => setForm(f => ({ ...f, title: v }))}
-            />
-            <TextInput
-              style={s.input}
-              placeholder="Amount (₹)"
-              placeholderTextColor="#444"
-              keyboardType="numeric"
-              value={form.amount}
-              onChangeText={v => setForm(f => ({ ...f, amount: v }))}
-            />
-
-            {/* Category Picker */}
+            <TextInput style={s.input} placeholder="Title" placeholderTextColor="#444" value={form.title} onChangeText={v => setForm(f => ({ ...f, title: v }))} />
+            <TextInput style={s.input} placeholder="Amount (₹)" placeholderTextColor="#444" keyboardType="numeric" value={form.amount} onChangeText={v => setForm(f => ({ ...f, amount: v }))} />
             <Text style={s.inputLabel}>Category</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -199,15 +186,7 @@ export default function ExpensesScreen() {
                 ))}
               </View>
             </ScrollView>
-
-            <TextInput
-              style={s.input}
-              placeholder="Note (optional)"
-              placeholderTextColor="#444"
-              value={form.note}
-              onChangeText={v => setForm(f => ({ ...f, note: v }))}
-            />
-
+            <TextInput style={s.input} placeholder="Note (optional)" placeholderTextColor="#444" value={form.note} onChangeText={v => setForm(f => ({ ...f, note: v }))} />
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }}>
                 <Text style={s.cancelBtnText}>Cancel</Text>
@@ -229,6 +208,13 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
   title: { color: '#fff', fontSize: 24, fontWeight: '800' },
   addBtn: { backgroundColor: '#818cf8', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  monthRow: { paddingHorizontal: 20, gap: 8, marginBottom: 14 },
+  catFilterRow: { paddingHorizontal: 20, gap: 8, marginBottom: 12 },
+  filterTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#262626' },
+  filterActive: { backgroundColor: '#818cf8', borderColor: '#818cf8' },
+  monthActive: { backgroundColor: '#34d399', borderColor: '#34d399' },
+  filterText: { color: '#555', fontSize: 13 },
+  filterTextActive: { color: '#0d0d0d', fontWeight: '700' },
   card: { backgroundColor: '#1a1a1a', borderRadius: 20, padding: 22, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#262626' },
   cardLabel: { color: '#666', fontSize: 12, letterSpacing: 1 },
   cardAmount: { color: '#818cf8', fontSize: 36, fontWeight: '800', marginTop: 6 },
@@ -238,12 +224,6 @@ const s = StyleSheet.create({
   catChipText: { color: '#888', fontSize: 11 },
   catChipAmt: { fontSize: 11, fontWeight: '700' },
   noData: { color: '#333', fontSize: 13 },
-  filterScroll: { marginBottom: 12 },
-  filterContent: { paddingHorizontal: 20, gap: 8 },
-  filterTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#262626' },
-  filterActive: { backgroundColor: '#818cf8', borderColor: '#818cf8' },
-  filterText: { color: '#555', fontSize: 13 },
-  filterTextActive: { color: '#fff', fontWeight: '700' },
   list: { paddingHorizontal: 20 },
   empty: { alignItems: 'center', marginTop: 60, gap: 12 },
   emptyText: { color: '#333', fontSize: 14 },
@@ -259,7 +239,7 @@ const s = StyleSheet.create({
   modalBox: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
   input: { backgroundColor: '#262626', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
-  catBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#262626', borderWidth: 1, borderColor: '#2a2a2a' },
+  catBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#262626', borderWidth: 1, borderColor: '#333' },
   catBtnText: { color: '#555', fontSize: 12 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#262626', alignItems: 'center' },
