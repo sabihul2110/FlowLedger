@@ -8,16 +8,15 @@ flowledger/
 */
 
 import { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, TextInput, KeyboardAvoidingView, Platform, Alert,
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getLoans, saveLoan, settleLoan, deleteLoan } from '../store/loanStore';
 
-const EMPTY_FORM = { name: '', amount: '', note: '', type: 'lent' };
+const EMPTY_FORM = { name: '', amount: '', note: '', type: 'lent', upi: '' };
 
 export default function LoansScreen() {
   const [loans, setLoans] = useState([]);
@@ -53,6 +52,22 @@ export default function LoansScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => { await deleteLoan(id); load(); } },
     ]);
+  };
+
+  const handleUPI = (loan) => {
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(loan.upi || '')}&pn=${encodeURIComponent(loan.name)}&am=${loan.amount}&cu=INR`;
+    Linking.openURL(upiUrl)
+      .then(() => {
+        Alert.alert(
+          'Payment Confirmation',
+          'Did you complete the payment?',
+          [
+            { text: 'No', style: 'cancel' },
+            { text: 'Yes', onPress: () => { settleLoan(loan.id); load(); } },
+          ]
+        );
+      })
+      .catch(() => Alert.alert('Error', 'No UPI app found on this device.'));
   };
 
   const filtered = filter === 'all' ? loans : loans.filter(l => l.type === filter);
@@ -129,9 +144,16 @@ export default function LoansScreen() {
                 {loan.type === 'lent' ? '+' : '-'}₹{loan.amount.toLocaleString()}
               </Text>
               {loan.status === 'pending' && (
-                <TouchableOpacity onPress={() => handleSettle(loan.id)} style={s.settleBtn}>
-                  <Text style={s.settleBtnText}>Settle</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity onPress={() => handleSettle(loan.id)} style={s.settleBtn}>
+                    <Text style={s.settleBtnText}>Settle</Text>
+                  </TouchableOpacity>
+                  {loan.type === 'borrowed' && (
+                    <TouchableOpacity onPress={() => handleUPI(loan)} style={s.settleBtn}>
+                      <Text style={[s.settleBtnText, { color: '#ffb347' }]}>Pay</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
               <TouchableOpacity onPress={() => handleDelete(loan.id)} style={s.deleteBtn}>
                 <Ionicons name="trash-outline" size={14} color="#444" />
@@ -187,6 +209,15 @@ export default function LoansScreen() {
               placeholderTextColor="#444"
               value={form.note}
               onChangeText={v => setForm(f => ({ ...f, note: v }))}
+            />
+
+            <TextInput
+              style={s.input}
+              placeholder="UPI ID (required to Pay)"
+              placeholderTextColor="#444"
+              autoCapitalize="none"
+              value={form.upi}
+              onChangeText={v => setForm(f => ({ ...f, upi: v }))}
             />
 
             <View style={s.modalBtns}>
