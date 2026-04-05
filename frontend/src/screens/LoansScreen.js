@@ -20,6 +20,7 @@ import { C, S, T } from '../constants';
 import FilterPill from '../components/FilterPill';
 import EmptyState from '../components/EmptyState';
 import LoadingScreen from '../components/LoadingScreen';
+import FadeInView from '../components/FadeInView';
 
 const EMPTY_FORM = { name: '', amount: '', note: '', type: 'lent', upi: '' };
 
@@ -92,43 +93,42 @@ export default function LoansScreen({ navigation }) {
       {/* List */}
       <ScrollView style={s.list} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 && <EmptyState icon="wallet-outline" message="No loans yet" />}
-        {filtered.map(loan => {
+        {filtered.map((loan, index) => {
           const remaining = loan.amount - (loan.paid || 0);
           return (
-            <TouchableOpacity
-              key={loan.id}
-              style={[s.card, loan.status === 'settled' && s.cardSettled]}
-              onPress={() => navigation.navigate('LoanDetail', { loan })}
-              activeOpacity={0.75}
-            >
-              <View style={s.cardLeft}>
-                <View style={s.avatar}>
-                  <Text style={s.avatarText}>{loan.name[0].toUpperCase()}</Text>
-                </View>
-                <View>
-                  <Text style={s.loanName}>{loan.name}</Text>
-                  {loan.note ? <Text style={s.loanNote}>{loan.note}</Text> : null}
-                  <Text style={s.loanDate}>
-                    {new Date(loan.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    {' · '}
-                    <Text style={loan.status === 'settled' ? s.tagSettled : s.tagPending}>
-                      {loan.status}
+            <FadeInView key={loan.id} delay={index * 50}>
+              <TouchableOpacity
+                style={[s.card, loan.status === 'settled' && s.cardSettled]}
+                onPress={() => navigation.navigate('LoanDetail', { loan })}
+                activeOpacity={0.75}
+              >
+                <View style={s.cardLeft}>
+                  <View style={s.avatar}>
+                    <Text style={s.avatarText}>{loan.name[0].toUpperCase()}</Text>
+                  </View>
+                  <View>
+                    <Text style={s.loanName}>{loan.name}</Text>
+                    {loan.note ? <Text style={s.loanNote}>{loan.note}</Text> : null}
+                    <Text style={s.loanDate}>
+                      {new Date(loan.created_at || loan.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      {' · '}
+                      <Text style={loan.status === 'settled' ? s.tagSettled : s.tagPending}>
+                        {loan.status}
+                      </Text>
                     </Text>
+                    {(loan.paid || 0) > 0 && (
+                      <Text style={s.paidHint}>Paid ₹{loan.paid} · Left ₹{remaining}</Text>
+                    )}
+                  </View>
+                </View>
+                <View style={s.cardRight}>
+                  <Text style={loan.type === 'lent' ? s.amountGreen : s.amountRed}>
+                    {loan.type === 'lent' ? '+' : '-'}₹{remaining.toLocaleString()}
                   </Text>
-                  {(loan.paid || 0) > 0 && (
-                    <Text style={s.paidHint}>
-                      Paid ₹{loan.paid} · Left ₹{remaining}
-                    </Text>
-                  )}
+                  <Ionicons name="chevron-forward" size={16} color="#333" />
                 </View>
-              </View>
-              <View style={s.cardRight}>
-                <Text style={loan.type === 'lent' ? s.amountGreen : s.amountRed}>
-                  {loan.type === 'lent' ? '+' : '-'}₹{remaining.toLocaleString()}
-                </Text>
-                <Ionicons name="chevron-forward" size={16} color="#333" />
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </FadeInView>
           );
         })}
         <View style={{ height: 30 }} />

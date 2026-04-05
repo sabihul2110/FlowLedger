@@ -22,6 +22,7 @@ import { C, S, T } from '../constants';
 import FilterPill from '../components/FilterPill';
 import EmptyState from '../components/EmptyState';
 import LoadingScreen from '../components/LoadingScreen';
+import FadeInView from '../components/FadeInView';
 
 const CATEGORY_ICONS = {
   Food: 'fast-food-outline',
@@ -150,25 +151,27 @@ export default function ExpensesScreen() {
         {/* List */}
         <View style={s.list}>
           {filtered.length === 0 && <EmptyState icon="receipt-outline" message="No expenses this period" />}
-          {filtered.map(exp => (
-            <View key={exp.id} style={s.expRow}>
-              <View style={[s.expIcon, { backgroundColor: CATEGORY_COLORS[exp.category] + '20' }]}>
-                <Ionicons name={CATEGORY_ICONS[exp.category]} size={18} color={CATEGORY_COLORS[exp.category]} />
+          {filtered.map((exp, index) => (
+            <FadeInView key={exp.id} delay={index * 50}>
+              <View style={s.expRow}>
+                <View style={[s.expIcon, { backgroundColor: CATEGORY_COLORS[exp.category] + '20' }]}>
+                  <Ionicons name={CATEGORY_ICONS[exp.category]} size={18} color={CATEGORY_COLORS[exp.category]} />
+                </View>
+                <View style={s.expInfo}>
+                  <Text style={s.expTitle}>{exp.title}</Text>
+                  <Text style={s.expMeta}>
+                    {exp.category}{exp.note ? ` · ${exp.note}` : ''} · {new Date(exp.created_at || exp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </Text>
+                </View>
+                <View style={s.expRight}>
+                  <Text style={s.expAmount}>₹{exp.amount.toLocaleString()}</Text>
+                  <TouchableOpacity onPress={() => handleDelete(exp.id)} activeOpacity={0.75}>
+                    <Ionicons name="trash-outline" size={14} color="#333" />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={s.expInfo}>
-                <Text style={s.expTitle}>{exp.title}</Text>
-                <Text style={s.expMeta}>
-                  {exp.category}{exp.note ? ` · ${exp.note}` : ''} · {new Date(loan.created_at || loan.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                </Text>
-              </View>
-              <View style={s.expRight}>
-                <Text style={s.expAmount}>₹{exp.amount.toLocaleString()}</Text>
-                <TouchableOpacity onPress={() => handleDelete(exp.id)} activeOpacity={0.75}>
-                  <Ionicons name="trash-outline" size={14} color="#333" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+            </FadeInView>
+))}
         </View>
         <View style={{ height: 30 }} />
       </ScrollView>

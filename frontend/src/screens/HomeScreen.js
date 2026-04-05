@@ -17,6 +17,7 @@ import { C, S, T } from '../constants';
 import Card from '../components/Card';
 import EmptyState from '../components/EmptyState';
 import LoadingScreen from '../components/LoadingScreen';
+import FadeInView from '../components/FadeInView';
 
 const QUICK_ACTIONS = [
   { label: 'Add Loan', icon: 'add-circle-outline', color: C.green, tab: 'Loans' },
@@ -131,7 +132,11 @@ export default function HomeScreen({ navigation }) {
             subtext="Add your first loan →"
           />
         ) : (
-          recent.map(item => <ActivityItem key={item.id} item={item} />)
+          recent.map((item, index) => (
+            <FadeInView key={item.id} delay={index * 50}>
+              <ActivityItem item={item} />
+            </FadeInView>
+          ))
         )}
 
         <View style={{ height: S.xxl }} />

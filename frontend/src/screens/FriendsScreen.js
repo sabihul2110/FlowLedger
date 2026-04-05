@@ -29,6 +29,7 @@ import { C, S, T } from '../constants';
 import FilterPill from '../components/FilterPill';
 import EmptyState from '../components/EmptyState';
 import LoadingScreen from '../components/LoadingScreen';
+import FadeInView from '../components/FadeInView';
 
 const EMPTY_FORM = { name: '', phone: '', upi: '' };
 
@@ -129,53 +130,46 @@ export default function FriendsScreen() {
             <Text style={s.emptyText}>No friends yet</Text>
           </View>
         )}
-        {filtered.map(friend => {
+        {filtered.map((friend, index) => {
           const bal = getBalance(friend);
           return (
-            <View key={friend.id} style={s.card}>
-              <View style={s.cardLeft}>
-                <View style={s.avatar}>
-                  <Text style={s.avatarText}>{friend.name[0].toUpperCase()}</Text>
-                </View>
-                <View>
-                  <Text style={s.friendName}>{friend.name}</Text>
-                  <Text style={s.friendSub}>
-                    {friend.upi || friend.phone || 'No UPI / phone'}
-                  </Text>
-                  {bal !== 0 && (
-                    <Text style={bal > 0 ? s.balGreen : s.balRed}>
-                      {bal > 0 ? `Owes you ₹${bal}` : `You owe ₹${Math.abs(bal)}`}
+            <FadeInView key={friend.id} delay={index * 50}>
+              <View style={s.card}>
+                <View style={s.cardLeft}>
+                  <View style={s.avatar}>
+                    <Text style={s.avatarText}>{friend.name[0].toUpperCase()}</Text>
+                  </View>
+                  <View>
+                    <Text style={s.friendName}>{friend.name}</Text>
+                    <Text style={s.friendSub}>
+                      {friend.upi || friend.phone || 'No UPI / phone'}
                     </Text>
+                    {bal !== 0 && (
+                      <Text style={bal > 0 ? s.balGreen : s.balRed}>
+                        {bal > 0 ? `Owes you ₹${bal}` : `You owe ₹${Math.abs(bal)}`}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <View style={s.cardActions}>
+                  {bal < 0 && friend.upi && (
+                    <TouchableOpacity style={s.upiBtn} onPress={() => handleUPI(friend, bal)} activeOpacity={0.75}>
+                      <Ionicons name="qr-code-outline" size={14} color={C.yellow} />
+                      <Text style={s.upiBtnText}>Pay</Text>
+                    </TouchableOpacity>
                   )}
+                  {bal > 0 && friend.upi && (
+                    <TouchableOpacity style={s.remindBtn} onPress={() => Alert.alert('Remind', `Send a reminder to ${friend.name}?`)} activeOpacity={0.75}>
+                      <Ionicons name="notifications-outline" size={14} color={C.purple} />
+                      <Text style={s.remindBtnText}>Remind</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={() => handleDelete(friend.id)} activeOpacity={0.75}>
+                    <Ionicons name="trash-outline" size={16} color="#333" />
+                  </TouchableOpacity>
                 </View>
               </View>
-
-              <View style={s.cardActions}>
-                {bal < 0 && friend.upi && (
-                  <TouchableOpacity
-                    style={s.upiBtn}
-                    onPress={() => handleUPI(friend, bal)}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="qr-code-outline" size={14} color={C.yellow} />
-                    <Text style={s.upiBtnText}>Pay</Text>
-                  </TouchableOpacity>
-                )}
-                {bal > 0 && friend.upi && (
-                  <TouchableOpacity
-                    style={s.remindBtn}
-                    onPress={() => Alert.alert('Remind', `Send a reminder to ${friend.name}?`)}
-                    activeOpacity={0.75}
-                  >
-                    <Ionicons name="notifications-outline" size={14} color={C.purple} />
-                    <Text style={s.remindBtnText}>Remind</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => handleDelete(friend.id)} activeOpacity={0.75}>
-                  <Ionicons name="trash-outline" size={16} color="#333" />
-                </TouchableOpacity>
-              </View>
-            </View>
+            </FadeInView>
           );
         })}
         <View style={{ height: 30 }} />
