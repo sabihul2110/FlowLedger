@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation }) {
             <Text style={s.greeting}>{greeting} 👋</Text>
             <Text style={s.name}>Mohammad</Text>
           </View>
-          <TouchableOpacity style={s.avatar}>
+          <TouchableOpacity style={s.avatar} onPress={() => navigation.navigate('Profile')}>
             <Text style={s.avatarText}>M</Text>
           </TouchableOpacity>
         </View>
