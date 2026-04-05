@@ -1,6 +1,6 @@
 # backend/app/models.py
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Float, DateTime, Enum, ForeignKey
 from sqlalchemy.sql import func
 from app.database import Base
 import enum
@@ -26,6 +26,7 @@ class User(Base):
 class Loan(Base):
     __tablename__ = "loans"
     id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
     name       = Column(String, nullable=False)
     amount     = Column(Float, nullable=False)
     paid       = Column(Float, default=0.0)
@@ -38,6 +39,7 @@ class Loan(Base):
 class Expense(Base):
     __tablename__ = "expenses"
     id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
     title      = Column(String, nullable=False)
     amount     = Column(Float, nullable=False)
     category   = Column(String, nullable=False)
@@ -47,6 +49,7 @@ class Expense(Base):
 class Friend(Base):
     __tablename__ = "friends"
     id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"), nullable=False)
     name       = Column(String, nullable=False)
     phone      = Column(String, nullable=True)
     upi        = Column(String, nullable=True)

@@ -248,6 +248,19 @@ export default function ProfileScreen() {
             <Ionicons name="upload-outline" size={16} color="#818cf8" />
             <Text style={[s.exportText, { color: '#818cf8' }]}>Import Data (JSON)</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={s.dangerBtn} onPress={async () => {
+            Alert.alert('Logout', 'Are you sure?', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Logout', style: 'destructive', onPress: async () => {
+                const { clearAuth } = require('../store/authStore');
+                await clearAuth();
+                if (route.params?.onLogout) route.params.onLogout();
+              }},
+            ]);
+          }}>
+            <Ionicons name="log-out-outline" size={16} color="#f87171" />
+            <Text style={s.dangerText}>Logout</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={s.dangerBtn} onPress={handleClearAll}>
             <Ionicons name="trash-outline" size={16} color="#f87171" />
             <Text style={s.dangerText}>Clear All Data</Text>
