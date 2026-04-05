@@ -84,8 +84,8 @@ export default function ExpensesScreen() {
     ]);
   };
 
-  if (loading) return <LoadingScreen />;
-
+  
+  const showLoader = loading && expenses.length === 0;
   return (
     <SafeAreaView style={s.safe}>
 
@@ -150,12 +150,23 @@ export default function ExpensesScreen() {
 
         {/* List */}
         <View style={s.list}>
-          {filtered.length === 0 && <EmptyState icon="receipt-outline" message="No expenses this period" />}
+          {showLoader && (
+            <View style={{ position: 'absolute', top: 20, left: 0, right: 0, alignItems: 'center', zIndex: 1 }}>
+              <LoadingScreen />
+            </View>
+          )}
+
+          {/* Empty state */}
+          {!loading && filtered.length === 0 && (
+            <EmptyState icon="receipt-outline" message="No expenses this period" />
+          )}
+          {/* {filtered.length === 0 && <EmptyState icon="receipt-outline" message="No expenses this period" />} */}
           {filtered.map((exp, index) => (
             <FadeInView key={exp.id} delay={index * 50}>
               <View style={s.expRow}>
                 <View style={[s.expIcon, { backgroundColor: CATEGORY_COLORS[exp.category] + '20' }]}>
                   <Ionicons name={CATEGORY_ICONS[exp.category]} size={18} color={CATEGORY_COLORS[exp.category]} />
+          
                 </View>
                 <View style={s.expInfo}>
                   <Text style={s.expTitle}>{exp.title}</Text>

@@ -3,23 +3,23 @@ import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
 import { C } from '../constants';
 
-const LoadingScreen = React.memo(() => {
-  const opacity = useRef(new Animated.Value(0)).current;
+// const LoadingScreen = React.memo(() => {
+//   const opacity = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, []);
+//   useEffect(() => {
+//     Animated.timing(opacity, {
+//       toValue: 1,
+//       duration: 200,
+//       useNativeDriver: true,
+//     }).start();
+//   }, []);
 
-  return (
-    <Animated.View style={[styles.container, { opacity }]}>
-      <View style={styles.dot} />
-    </Animated.View>
-  );
-});
+//   return (
+//     <Animated.View style={[styles.container, { opacity }]}>
+//       <View style={styles.dot} />
+//     </Animated.View>
+//   );
+// });
 
 // Pulsing dot loader
 function PulsingDot() {

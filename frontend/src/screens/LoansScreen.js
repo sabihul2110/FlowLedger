@@ -32,14 +32,20 @@ export default function LoansScreen({ navigation }) {
   const [filter, setFilter] = useState('all');
 
   const load = useCallback(async () => {
+    if (loans.length === 0) setLoading(true); // only first time
+
     const data = await getLoans();
     setLoans(data);
     setLoading(false);
-  }, []);
+  }, [loans]);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
-  if (loading) return <LoadingScreen />;
+  const showLoader = loading && loans.length === 0;
 
   const handleAdd = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Enter a name');
@@ -57,6 +63,19 @@ export default function LoansScreen({ navigation }) {
 
   return (
     <SafeAreaView style={s.safe}>
+
+      {showLoader && (
+        <View style={{
+          position: 'absolute',
+          top: 80,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          zIndex: 1
+        }}>
+          <LoadingScreen />
+        </View>
+      )}
 
       {/* Header */}
       <View style={s.header}>

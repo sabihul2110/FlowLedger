@@ -9,14 +9,15 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0d0d0d"
+      "backgroundColor": "#0a0a0a"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0d0d0d"
+        "backgroundColor": "#0a0a0a"
       },
-      "package": "com.flowledger.app"
+      "package": "com.flowledger.app",
+      "versionCode": 1
     },
     "ios": {
       "bundleIdentifier": "com.flowledger.app",
@@ -27,6 +28,11 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9bb3f4fb-27f3-440e-8623-12f113173189"
+      }
+    }
   }
 }

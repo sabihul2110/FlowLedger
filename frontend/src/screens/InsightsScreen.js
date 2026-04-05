@@ -63,92 +63,100 @@ export default function InsightsScreen() {
   }, [selMonth, selYear]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-  useEffect(() => { load(); }, [load]);
 
-  if (loading) return <LoadingScreen />;
-
-  if (!data) return (
-    <SafeAreaView style={s.safe}>
-      <Text style={s.loading}>Loading...</Text>
-    </SafeAreaView>
-  );
+  const showLoader = loading && !data;
 
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView showsVerticalScrollIndicator={false}>
-
-        <Text style={s.title}>Insights</Text>
-
-        {/* Month Selector */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.monthRow}>
-          {monthOptions.map(opt => (
-            <TouchableOpacity
-              key={`${opt.month}-${opt.year}`}
-              style={[s.filterTab, selMonth === opt.month && selYear === opt.year && s.filterActive]}
-              onPress={() => { setSelMonth(opt.month); setSelYear(opt.year); }}
-              activeOpacity={0.75}
-            >
-              <Text style={[s.filterText, selMonth === opt.month && selYear === opt.year && s.filterTextActive]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Balance Overview */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>BALANCE OVERVIEW</Text>
-          <Row icon="trending-up-outline" color={C.green} label="Total Lent" value={`₹${data.balance.totalLent.toLocaleString()}`} />
-          <Row icon="trending-down-outline" color={C.red} label="Total Owed" value={`₹${data.balance.totalOwed.toLocaleString()}`} />
-          <Row icon="wallet-outline" color={data.balance.net >= 0 ? C.green : C.red} label="Net Balance" value={`${data.balance.net >= 0 ? '+' : ''}₹${data.balance.net.toLocaleString()}`} highlight />
-        </View>
-
-        {/* Loans */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>LOANS</Text>
-          <Row icon="checkmark-circle-outline" color={C.green} label="Settled" value={`${data.settled}`} />
-          <Row icon="time-outline" color={C.yellow} label="Pending" value={`${data.pending}`} />
-          {data.topDebtor && (
-            <Row icon="person-outline" color={C.purple} label="Owes you most" value={`${data.topDebtor[0]} · ₹${data.topDebtor[1].toLocaleString()}`} />
-          )}
-        </View>
-
-        {/* Monthly Expenses */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>EXPENSES · {monthOptions.find(o => o.month === selMonth && o.year === selYear)?.label}</Text>
-          <Row icon="receipt-outline" color={C.purple} label="Total spent" value={`₹${data.monthTotal.toLocaleString()}`} />
-          <Row icon="list-outline" color={C.purple} label="Transactions" value={`${data.monthCount}`} />
-          <Row icon="calculator-outline" color={C.purple} label="Avg per expense" value={`₹${data.avg}`} />
-          {data.biggest.amount > 0 && (
-            <Row icon="arrow-up-outline" color={C.red} label="Biggest" value={`${data.biggest.title} · ₹${data.biggest.amount}`} />
-          )}
-          {data.monthTotal > 0 && (
-            <Row icon="star-outline" color={C.yellow} label="Top category" value={`${data.topCat} · ₹${data.byCategory[data.topCat]}`} />
-          )}
-        </View>
-
-        {/* Category Breakdown */}
-        {data.monthTotal > 0 && (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>CATEGORY BREAKDOWN</Text>
-            {CATEGORIES.filter(c => data.byCategory[c] > 0)
-              .sort((a, b) => data.byCategory[b] - data.byCategory[a])
-              .map(c => {
-                const pct = Math.round((data.byCategory[c] / data.monthTotal) * 100);
-                return (
-                  <View key={c} style={s.catRow}>
-                    <Text style={s.catLabel}>{c}</Text>
-                    <View style={s.barTrack}>
-                      <View style={[s.barFill, { width: `${pct}%` }]} />
-                    </View>
-                    <Text style={s.catValue}>{pct}%</Text>
-                  </View>
-                );
-              })}
+        {showLoader && (
+          <View style={{
+            position: 'absolute',
+            top: 80,
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            zIndex: 1
+          }}>
+            <LoadingScreen />
           </View>
         )}
 
-        <View style={{ height: 30 }} />
+        {data && (
+          <>
+            <Text style={s.title}>Insights</Text>
+
+            {/* Month Selector */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.monthRow}>
+              {monthOptions.map(opt => (
+                <TouchableOpacity
+                  key={`${opt.month}-${opt.year}`}
+                  style={[s.filterTab, selMonth === opt.month && selYear === opt.year && s.filterActive]}
+                  onPress={() => { setSelMonth(opt.month); setSelYear(opt.year); }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[s.filterText, selMonth === opt.month && selYear === opt.year && s.filterTextActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Balance Overview */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>BALANCE OVERVIEW</Text>
+              <Row icon="trending-up-outline" color={C.green} label="Total Lent" value={`₹${data.balance.totalLent.toLocaleString()}`} />
+              <Row icon="trending-down-outline" color={C.red} label="Total Owed" value={`₹${data.balance.totalOwed.toLocaleString()}`} />
+              <Row icon="wallet-outline" color={data.balance.net >= 0 ? C.green : C.red} label="Net Balance" value={`${data.balance.net >= 0 ? '+' : ''}₹${data.balance.net.toLocaleString()}`} highlight />
+            </View>
+
+            {/* Loans */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>LOANS</Text>
+              <Row icon="checkmark-circle-outline" color={C.green} label="Settled" value={`${data.settled}`} />
+              <Row icon="time-outline" color={C.yellow} label="Pending" value={`${data.pending}`} />
+              {data.topDebtor && (
+                <Row icon="person-outline" color={C.purple} label="Owes you most" value={`${data.topDebtor[0]} · ₹${data.topDebtor[1].toLocaleString()}`} />
+              )}
+            </View>
+
+            {/* Monthly Expenses */}
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>EXPENSES · {monthOptions.find(o => o.month === selMonth && o.year === selYear)?.label}</Text>
+              <Row icon="receipt-outline" color={C.purple} label="Total spent" value={`₹${data.monthTotal.toLocaleString()}`} />
+              <Row icon="list-outline" color={C.purple} label="Transactions" value={`${data.monthCount}`} />
+              <Row icon="calculator-outline" color={C.purple} label="Avg per expense" value={`₹${data.avg}`} />
+              {data.biggest.amount > 0 && (
+                <Row icon="arrow-up-outline" color={C.red} label="Biggest" value={`${data.biggest.title} · ₹${data.biggest.amount}`} />
+              )}
+              {data.monthTotal > 0 && (
+                <Row icon="star-outline" color={C.yellow} label="Top category" value={`${data.topCat} · ₹${data.byCategory[data.topCat]}`} />
+              )}
+            </View>
+
+            {/* Category Breakdown */}
+            {data.monthTotal > 0 && (
+              <View style={s.section}>
+                <Text style={s.sectionTitle}>CATEGORY BREAKDOWN</Text>
+                {CATEGORIES.filter(c => data.byCategory[c] > 0)
+                  .sort((a, b) => data.byCategory[b] - data.byCategory[a])
+                  .map(c => {
+                    const pct = Math.round((data.byCategory[c] / data.monthTotal) * 100);
+                    return (
+                      <View key={c} style={s.catRow}>
+                        <Text style={s.catLabel}>{c}</Text>
+                        <View style={s.barTrack}>
+                          <View style={[s.barFill, { width: `${pct}%` }]} />
+                        </View>
+                        <Text style={s.catValue}>{pct}%</Text>
+                      </View>
+                    );
+                  })}
+              </View>
+            )}
+            <View style={{ height: 30 }} />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

@@ -42,10 +42,11 @@ export default function FriendsScreen() {
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
+    if (friends.length === 0) setLoading(true);
+
     const f = await getFriends();
     setFriends(f);
 
-    // Build net balance per friend name from loans
     const loans = await getLoans();
     const map = {};
     loans.filter(l => l.status === 'pending').forEach(l => {
@@ -53,13 +54,18 @@ export default function FriendsScreen() {
       if (!map[key]) map[key] = 0;
       map[key] += l.type === 'lent' ? l.amount : -l.amount;
     });
+
     setLoanMap(map);
     setLoading(false);
-  }, []);
+  }, [friends]);
 
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
-  if (loading) return <LoadingScreen />;
+  const showLoader = loading && friends.length === 0;
 
   const handleAdd = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Enter a name');
@@ -94,6 +100,19 @@ export default function FriendsScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
+
+      {showLoader && (
+        <View style={{
+          position: 'absolute',
+          top: 80,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          zIndex: 1
+        }}>
+          <LoadingScreen />
+        </View>
+      )}
 
       {/* Header */}
       <View style={s.header}>
