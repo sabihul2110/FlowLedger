@@ -33,7 +33,12 @@ export default function LoginScreen({ navigation, onLogin }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Login failed');
-      await saveAuth(data.access_token, { id: data.user_id, name: data.name });
+      await saveAuth(data.access_token, {
+        id: data.user_id,
+        name: data.name,
+        upi: data.upi || '',
+        phone: data.phone || '',
+      });
       onLogin();
     } catch (e) {
       Alert.alert('Login Failed', e.message);

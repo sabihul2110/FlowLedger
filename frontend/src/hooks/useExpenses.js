@@ -11,7 +11,7 @@ export default function useExpenses(month, year) {
     setLoading(true);
     const all = await getExpenses();
     const filtered = all.filter(e => {
-      const d = new Date(e.createdAt);
+      const d = new Date(e.created_at || e.createdAt);
       return d.getMonth() === month && d.getFullYear() === year;
     });
     setExpenses(filtered);

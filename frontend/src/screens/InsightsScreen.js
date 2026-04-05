@@ -30,7 +30,7 @@ export default function InsightsScreen() {
 
     // Filter expenses by selected month
     const monthExpenses = allExpenses.filter(e => {
-      const d = new Date(e.createdAt);
+      const d = new Date(e.created_at || e.createdAt);
       return d.getMonth() === selMonth && d.getFullYear() === selYear;
     });
 

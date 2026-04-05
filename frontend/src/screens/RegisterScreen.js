@@ -34,7 +34,12 @@ export default function RegisterScreen({ navigation, onLogin }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Registration failed');
-      await saveAuth(data.access_token, { id: data.user_id, name: data.name });
+      await saveAuth(data.access_token, {
+        id: data.user_id,
+        name: data.name,
+        upi: data.upi || '',
+        phone: data.phone || '',
+      });
       onLogin();
     } catch (e) {
       Alert.alert('Registration Failed', e.message);

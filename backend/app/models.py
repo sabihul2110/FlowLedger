@@ -44,6 +44,7 @@ class Expense(Base):
     amount     = Column(Float, nullable=False)
     category   = Column(String, nullable=False)
     note       = Column(String, nullable=True)
+    date = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
 class Friend(Base):

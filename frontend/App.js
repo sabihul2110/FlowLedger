@@ -1,17 +1,10 @@
-/*
-Project Structure:
-flowledger/
-  frontend/
-    App.js
-*/
-
 import { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
-import { isLoggedIn } from './src/store/authStore';
+import { isLoggedIn, clearAuth } from './src/store/authStore';
 import { View, ActivityIndicator } from 'react-native';
 
 const Stack = createStackNavigator();
@@ -24,6 +17,11 @@ export default function App() {
     isLoggedIn().then(v => { setLoggedIn(v); setChecking(false); });
   }, []);
 
+  const handleLogout = async () => {
+    await clearAuth();
+    setLoggedIn(false);
+  };
+
   if (checking) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0d0d0d', justifyContent: 'center', alignItems: 'center' }}>
@@ -35,7 +33,7 @@ export default function App() {
   return (
     <NavigationContainer>
       {loggedIn ? (
-        <AppNavigator onLogout={() => setLoggedIn(false)} />
+        <AppNavigator onLogout={handleLogout} />
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Login">

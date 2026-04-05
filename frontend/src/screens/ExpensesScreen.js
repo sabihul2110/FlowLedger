@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, deleteExpense, saveExpense } from '../store/expenseStore';
 import { getMonthOptions } from '../utils/dateHelpers';
 import useExpenses from '../hooks/useExpenses';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const CATEGORY_ICONS = {
   Food: 'fast-food-outline',
@@ -36,7 +37,7 @@ const CATEGORY_COLORS = {
   Other: '#888',
 };
 
-const EMPTY_FORM = { title: '', amount: '', category: 'Food', note: '' };
+const EMPTY_FORM = { title: '', amount: '', category: 'Food', note: '', date: new Date() };
 
 export default function ExpensesScreen() {
   const now = new Date();
@@ -48,6 +49,7 @@ export default function ExpensesScreen() {
 
   const monthOptions = getMonthOptions(6);
   const { expenses, reload } = useExpenses(selMonth, selYear);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Compute summary from hook data
   const total = expenses.reduce((s, e) => s + e.amount, 0);
@@ -60,7 +62,11 @@ export default function ExpensesScreen() {
   const handleAdd = async () => {
     if (!form.title.trim()) return Alert.alert('Error', 'Enter a title');
     if (!form.amount || isNaN(form.amount)) return Alert.alert('Error', 'Enter valid amount');
-    await saveExpense({ ...form, amount: parseFloat(form.amount) });
+    await saveExpense({
+      ...form,
+      amount: parseFloat(form.amount),
+      date: form.date.toISOString(),
+    });
     setForm(EMPTY_FORM);
     setShowModal(false);
     reload();
@@ -149,7 +155,7 @@ export default function ExpensesScreen() {
               <View style={s.expInfo}>
                 <Text style={s.expTitle}>{exp.title}</Text>
                 <Text style={s.expMeta}>
-                  {exp.category}{exp.note ? ` · ${exp.note}` : ''} · {new Date(exp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  {exp.category}{exp.note ? ` · ${exp.note}` : ''} · {new Date(exp.created_at || exp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 </Text>
               </View>
               <View style={s.expRight}>
@@ -171,6 +177,28 @@ export default function ExpensesScreen() {
             <Text style={s.modalTitle}>Add Expense</Text>
             <TextInput style={s.input} placeholder="Title" placeholderTextColor="#444" value={form.title} onChangeText={v => setForm(f => ({ ...f, title: v }))} />
             <TextInput style={s.input} placeholder="Amount (₹)" placeholderTextColor="#444" keyboardType="numeric" value={form.amount} onChangeText={v => setForm(f => ({ ...f, amount: v }))} />
+            {/* Date Picker */}
+            <TouchableOpacity
+              style={s.input}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ color: '#fff', fontSize: 15 }}>
+                📅 {form.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={form.date}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) setForm(f => ({ ...f, date: selectedDate }));
+                }}
+              />
+            )}
             <Text style={s.inputLabel}>Category</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', gap: 8 }}>

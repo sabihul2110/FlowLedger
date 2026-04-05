@@ -10,7 +10,24 @@ router = APIRouter(prefix="/expenses", tags=["Expenses"])
 
 @router.post("/", response_model=schemas.ExpenseOut)
 def create_expense(expense: schemas.ExpenseCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):
-    db_exp = models.Expense(**expense.model_dump(), user_id=user.id)
+    from datetime import datetime, timezone
+    data = expense.model_dump()
+    if data.get('date'):
+        try:
+            created = datetime.fromisoformat(data['date'].replace('Z', '+00:00'))
+        except Exception:
+            created = datetime.now(timezone.utc)
+    else:
+        created = datetime.now(timezone.utc)
+
+    db_exp = models.Expense(
+        user_id=user.id,
+        title=data['title'],
+        amount=data['amount'],
+        category=data['category'],
+        note=data.get('note'),
+        created_at=created,
+    )
     db.add(db_exp)
     db.commit()
     db.refresh(db_exp)

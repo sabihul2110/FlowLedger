@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional
 from app.database import get_db
 from app import models
@@ -23,6 +23,8 @@ class TokenResponse(BaseModel):
     token_type: str
     user_id: int
     name: str
+    upi: Optional[str] = ""
+    phone: Optional[str] = ""
 
 @router.post("/register", response_model=TokenResponse)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
@@ -40,7 +42,14 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "bearer", "user_id": user.id, "name": user.name}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "name": user.name,
+        "upi": user.upi or "",
+        "phone": user.phone or "",
+    }
 
 @router.post("/login", response_model=TokenResponse)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -48,7 +57,14 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "bearer", "user_id": user.id, "name": user.name}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "name": user.name,
+        "upi": user.upi or "",
+        "phone": user.phone or "",
+    }
 
 @router.get("/me")
 def get_me(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -57,5 +73,15 @@ def get_me(current_user: models.User = Depends(get_current_user), db: Session = 
         "name": current_user.name,
         "email": current_user.email,
         "upi": current_user.upi,
+        "phone": current_user.phone,
     }
 
+@router.delete("/delete-account")
+def delete_account(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Delete all user data
+    db.query(models.Loan).filter(models.Loan.user_id == current_user.id).delete()
+    db.query(models.Expense).filter(models.Expense.user_id == current_user.id).delete()
+    db.query(models.Friend).filter(models.Friend.user_id == current_user.id).delete()
+    db.query(models.User).filter(models.User.id == current_user.id).delete()
+    db.commit()
+    return {"message": "Account deleted"}

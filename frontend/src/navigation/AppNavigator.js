@@ -10,7 +10,6 @@ flowledger/
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-
 import HomeScreen from '../screens/HomeScreen';
 import LoansScreen from '../screens/LoansScreen';
 import LoanDetailScreen from '../screens/LoanDetailScreen';
@@ -31,16 +30,26 @@ function LoansStack() {
   );
 }
 
+function ProfileStack({ onLogout }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProfileMain">
+        {props => <ProfileScreen {...props} onLogout={onLogout} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
 const ICONS = {
   Home: ['home', 'home-outline'],
-  Insights: ['bar-chart', 'bar-chart-outline'],
   Loans: ['wallet', 'wallet-outline'],
   Expenses: ['receipt', 'receipt-outline'],
   Friends: ['people', 'people-outline'],
+  Insights: ['bar-chart', 'bar-chart-outline'],
   Profile: ['person', 'person-outline'],
 };
 
-export default function AppNavigator() {
+export default function AppNavigator({ onLogout }) {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -59,7 +68,9 @@ export default function AppNavigator() {
       <Tab.Screen name="Expenses" component={ExpensesScreen} />
       <Tab.Screen name="Friends" component={FriendsScreen} />
       <Tab.Screen name="Insights" component={InsightsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Profile">
+        {() => <ProfileStack onLogout={onLogout} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

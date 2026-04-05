@@ -40,14 +40,20 @@ class LoanOut(LoanCreate):
         from_attributes = True
 
 # --- Expense ---
+
 class ExpenseCreate(BaseModel):
     title: str
     amount: float
     category: str
     note: Optional[str] = None
+    date: Optional[str] = None  # ISO string e.g. "2026-04-05"
 
-class ExpenseOut(ExpenseCreate):
+class ExpenseOut(BaseModel):
     id: int
+    title: str
+    amount: float
+    category: str
+    note: Optional[str] = None
     created_at: datetime
     class Config:
         from_attributes = True
