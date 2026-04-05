@@ -1,5 +1,5 @@
 // frontend/src/hooks/useExpenses.js
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { getExpenses } from '../store/expenseStore';
 
@@ -7,7 +7,7 @@ export default function useExpenses(month, year) {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const all = await getExpenses();
     const filtered = all.filter(e => {
@@ -16,9 +16,10 @@ export default function useExpenses(month, year) {
     });
     setExpenses(filtered);
     setLoading(false);
-  };
+  }, [month, year]);
 
-  useFocusEffect(useCallback(() => { load(); }, [month, year]));
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useEffect(() => { load(); }, [month, year]);
 
   return { expenses, loading, reload: load };
 }

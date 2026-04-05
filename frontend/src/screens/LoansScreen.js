@@ -16,21 +16,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { getLoans, saveLoan } from '../store/loanStore';
+import { C, S, T } from '../constants';
+import FilterPill from '../components/FilterPill';
+import EmptyState from '../components/EmptyState';
+import LoadingScreen from '../components/LoadingScreen';
 
 const EMPTY_FORM = { name: '', amount: '', note: '', type: 'lent', upi: '' };
 
 export default function LoansScreen({ navigation }) {
+  const [loading, setLoading] = useState(true);
   const [loans, setLoans] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [filter, setFilter] = useState('all');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const data = await getLoans();
     setLoans(data);
-  };
+    setLoading(false);
+  }, []);
 
   useFocusEffect(useCallback(() => { load(); }, []));
+
+  if (loading) return <LoadingScreen />;
 
   const handleAdd = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Enter a name');
@@ -52,8 +60,8 @@ export default function LoansScreen({ navigation }) {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Loans</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
-          <Ionicons name="add" size={22} color="#0d0d0d" />
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)} activeOpacity={0.75}>
+          <Ionicons name="add" size={22} color={C.bg} />
         </TouchableOpacity>
       </View>
 
@@ -72,26 +80,18 @@ export default function LoansScreen({ navigation }) {
       {/* Filter */}
       <View style={s.filterRow}>
         {['all', 'lent', 'borrowed'].map(f => (
-          <TouchableOpacity
+          <FilterPill
             key={f}
-            style={[s.filterTab, filter === f && s.filterActive]}
+            label={f.charAt(0).toUpperCase() + f.slice(1)}
+            active={filter === f}
             onPress={() => setFilter(f)}
-          >
-            <Text style={[s.filterText, filter === f && s.filterTextActive]}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
       {/* List */}
       <ScrollView style={s.list} showsVerticalScrollIndicator={false}>
-        {filtered.length === 0 && (
-          <View style={s.empty}>
-            <Ionicons name="wallet-outline" size={48} color="#222" />
-            <Text style={s.emptyText}>No loans yet</Text>
-          </View>
-        )}
+        {filtered.length === 0 && <EmptyState icon="wallet-outline" message="No loans yet" />}
         {filtered.map(loan => {
           const remaining = loan.amount - (loan.paid || 0);
           return (
@@ -99,7 +99,7 @@ export default function LoansScreen({ navigation }) {
               key={loan.id}
               style={[s.card, loan.status === 'settled' && s.cardSettled]}
               onPress={() => navigation.navigate('LoanDetail', { loan })}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
               <View style={s.cardLeft}>
                 <View style={s.avatar}>
@@ -146,6 +146,7 @@ export default function LoansScreen({ navigation }) {
                   key={t}
                   style={[s.typeBtn, form.type === t && (t === 'lent' ? s.typeBtnGreen : s.typeBtnRed)]}
                   onPress={() => setForm(f => ({ ...f, type: t }))}
+                  activeOpacity={0.75}
                 >
                   <Text style={[s.typeBtnText, form.type === t && s.typeBtnTextActive]}>
                     {t === 'lent' ? '↑ I Lent' : '↓ I Borrowed'}
@@ -160,10 +161,10 @@ export default function LoansScreen({ navigation }) {
             <TextInput style={s.input} placeholder="Note (optional)" placeholderTextColor="#444" value={form.note} onChangeText={v => setForm(f => ({ ...f, note: v }))} />
 
             <View style={s.modalBtns}>
-              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }} activeOpacity={0.75}>
                 <Text style={s.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.saveBtn} onPress={handleAdd}>
+              <TouchableOpacity style={s.saveBtn} onPress={handleAdd} activeOpacity={0.75}>
                 <Text style={s.saveBtnText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -176,50 +177,44 @@ export default function LoansScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0d0d0d' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-  title: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  addBtn: { backgroundColor: '#34d399', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  summaryRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 16 },
-  summaryCard: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#262626' },
+  safe: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: S.lg, paddingTop: 16, paddingBottom: 12 },
+  title: { color: '#fff', fontSize: T.xl, fontWeight: '800' },
+  addBtn: { backgroundColor: C.green, borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  summaryRow: { flexDirection: 'row', paddingHorizontal: S.lg, gap: 12, marginBottom: 16 },
+  summaryCard: { flex: 1, backgroundColor: C.card, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.border },
   summaryLabel: { color: '#555', fontSize: 11, marginBottom: 4 },
-  summaryGreen: { color: '#34d399', fontSize: 20, fontWeight: '700' },
-  summaryRed: { color: '#f87171', fontSize: 20, fontWeight: '700' },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 16 },
-  filterTab: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#262626' },
-  filterActive: { backgroundColor: '#34d399', borderColor: '#34d399' },
-  filterText: { color: '#555', fontSize: 13 },
-  filterTextActive: { color: '#0d0d0d', fontWeight: '700' },
-  list: { flex: 1, paddingHorizontal: 20 },
-  empty: { alignItems: 'center', marginTop: 80, gap: 12 },
-  emptyText: { color: '#333', fontSize: 14 },
-  card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#262626' },
+  summaryGreen: { color: C.green, fontSize: 20, fontWeight: '700' },
+  summaryRed: { color: C.red, fontSize: 20, fontWeight: '700' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: S.lg, gap: 8, marginBottom: 16 },
+  list: { flex: 1, paddingHorizontal: S.lg },
+  card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border },
   cardSettled: { opacity: 0.4 },
   cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#262626', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#34d399', fontWeight: '700' },
+  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.border, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: C.green, fontWeight: '700' },
   loanName: { color: '#fff', fontWeight: '600', fontSize: 14 },
   loanNote: { color: '#555', fontSize: 12 },
   loanDate: { color: '#444', fontSize: 11, marginTop: 2 },
-  tagPending: { color: '#fbbf24' },
-  tagSettled: { color: '#34d399' },
-  paidHint: { color: '#fbbf24', fontSize: 11, marginTop: 2 },
+  tagPending: { color: C.yellow },
+  tagSettled: { color: C.green },
+  paidHint: { color: C.yellow, fontSize: 11, marginTop: 2 },
   cardRight: { alignItems: 'flex-end', gap: 6 },
-  amountGreen: { color: '#34d399', fontWeight: '700', fontSize: 15 },
-  amountRed: { color: '#f87171', fontWeight: '700', fontSize: 15 },
+  amountGreen: { color: C.green, fontWeight: '700', fontSize: 15 },
+  amountRed: { color: C.red, fontWeight: '700', fontSize: 15 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
-  modalBox: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
+  modalBox: { backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: S.lg },
   typeRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  typeBtn: { flex: 1, padding: 12, borderRadius: 12, backgroundColor: '#262626', alignItems: 'center', borderWidth: 1, borderColor: '#333' },
-  typeBtnGreen: { backgroundColor: '#34d39915', borderColor: '#34d399' },
-  typeBtnRed: { backgroundColor: '#f8717115', borderColor: '#f87171' },
+  typeBtn: { flex: 1, padding: 12, borderRadius: 12, backgroundColor: C.border, alignItems: 'center', borderWidth: 1, borderColor: '#333' },
+  typeBtnGreen: { backgroundColor: `${C.green}15`, borderColor: C.green },
+  typeBtnRed: { backgroundColor: `${C.red}15`, borderColor: C.red },
   typeBtnText: { color: '#555', fontWeight: '600' },
   typeBtnTextActive: { color: '#fff' },
-  input: { backgroundColor: '#262626', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
+  input: { backgroundColor: C.input, borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#262626', alignItems: 'center' },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.border, alignItems: 'center' },
   cancelBtnText: { color: '#555', fontWeight: '600' },
-  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#34d399', alignItems: 'center' },
-  saveBtnText: { color: '#0d0d0d', fontWeight: '800' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.green, alignItems: 'center' },
+  saveBtnText: { color: C.bg, fontWeight: '800' },
 });

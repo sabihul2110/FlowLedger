@@ -17,6 +17,7 @@ import ExpensesScreen from '../screens/ExpensesScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import InsightsScreen from '../screens/InsightsScreen';
+import { C } from '../constants';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -25,7 +26,14 @@ function LoansStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="LoansList" component={LoansScreen} />
-      <Stack.Screen name="LoanDetail" component={LoanDetailScreen} />
+      <Stack.Screen
+        name="LoanDetail"
+        component={LoanDetailScreen}
+        options={{
+          presentation: 'modal',      // makes it feel like a bottom sheet
+          animationTypeForReplace: 'push',
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -54,12 +62,12 @@ export default function AppNavigator({ onLogout }) {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: { backgroundColor: '#0d0d0d', borderTopColor: '#1a1a1a', height: 60, paddingBottom: 8 },
-        tabBarActiveTintColor: '#34d399',
-        tabBarInactiveTintColor: '#444',
+        tabBarStyle: { backgroundColor: C.bg, borderTopColor: C.border, height: 60, paddingBottom: 8 },
+        tabBarActiveTintColor: C.green,
+        tabBarInactiveTintColor: C.textDisabled,
         tabBarIcon: ({ focused, size }) => {
           const [active, inactive] = ICONS[route.name];
-          return <Ionicons name={focused ? active : inactive} size={size} color={focused ? '#34d399' : '#444'} />;
+          return <Ionicons name={focused ? active : inactive} size={size} color={focused ? C.green : C.textDisabled} />;
         },
       })}
     >

@@ -18,6 +18,10 @@ import { CATEGORIES, deleteExpense, saveExpense } from '../store/expenseStore';
 import { getMonthOptions } from '../utils/dateHelpers';
 import useExpenses from '../hooks/useExpenses';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { C, S, T } from '../constants';
+import FilterPill from '../components/FilterPill';
+import EmptyState from '../components/EmptyState';
+import LoadingScreen from '../components/LoadingScreen';
 
 const CATEGORY_ICONS = {
   Food: 'fast-food-outline',
@@ -48,7 +52,7 @@ export default function ExpensesScreen() {
   const [form, setForm] = useState(EMPTY_FORM);
 
   const monthOptions = getMonthOptions(6);
-  const { expenses, reload } = useExpenses(selMonth, selYear);
+  const { expenses, reload, loading } = useExpenses(selMonth, selYear);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Compute summary from hook data
@@ -79,14 +83,16 @@ export default function ExpensesScreen() {
     ]);
   };
 
+  if (loading) return <LoadingScreen />;
+
   return (
     <SafeAreaView style={s.safe}>
 
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Expenses</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
-          <Ionicons name="add" size={22} color="#0d0d0d" />
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)} activeOpacity={0.75}>
+          <Ionicons name="add" size={22} color={C.bg} />
         </TouchableOpacity>
       </View>
 
@@ -99,6 +105,7 @@ export default function ExpensesScreen() {
               key={`${opt.month}-${opt.year}`}
               style={[s.filterTab, selMonth === opt.month && selYear === opt.year && s.monthActive]}
               onPress={() => { setSelMonth(opt.month); setSelYear(opt.year); }}
+              activeOpacity={0.75}
             >
               <Text style={[s.filterText, selMonth === opt.month && selYear === opt.year && s.filterTextActive]}>
                 {opt.label}
@@ -133,6 +140,7 @@ export default function ExpensesScreen() {
               key={c}
               style={[s.filterTab, filterCat === c && s.filterActive]}
               onPress={() => setFilterCat(c)}
+              activeOpacity={0.75}
             >
               <Text style={[s.filterText, filterCat === c && s.filterTextActive]}>{c}</Text>
             </TouchableOpacity>
@@ -141,12 +149,7 @@ export default function ExpensesScreen() {
 
         {/* List */}
         <View style={s.list}>
-          {filtered.length === 0 && (
-            <View style={s.empty}>
-              <Ionicons name="receipt-outline" size={48} color="#222" />
-              <Text style={s.emptyText}>No expenses</Text>
-            </View>
-          )}
+          {filtered.length === 0 && <EmptyState icon="receipt-outline" message="No expenses this period" />}
           {filtered.map(exp => (
             <View key={exp.id} style={s.expRow}>
               <View style={[s.expIcon, { backgroundColor: CATEGORY_COLORS[exp.category] + '20' }]}>
@@ -155,12 +158,12 @@ export default function ExpensesScreen() {
               <View style={s.expInfo}>
                 <Text style={s.expTitle}>{exp.title}</Text>
                 <Text style={s.expMeta}>
-                  {exp.category}{exp.note ? ` · ${exp.note}` : ''} · {new Date(exp.created_at || exp.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  {exp.category}{exp.note ? ` · ${exp.note}` : ''} · {new Date(loan.created_at || loan.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                 </Text>
               </View>
               <View style={s.expRight}>
                 <Text style={s.expAmount}>₹{exp.amount.toLocaleString()}</Text>
-                <TouchableOpacity onPress={() => handleDelete(exp.id)}>
+                <TouchableOpacity onPress={() => handleDelete(exp.id)} activeOpacity={0.75}>
                   <Ionicons name="trash-outline" size={14} color="#333" />
                 </TouchableOpacity>
               </View>
@@ -181,6 +184,7 @@ export default function ExpensesScreen() {
             <TouchableOpacity
               style={s.input}
               onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.75}
             >
               <Text style={{ color: '#fff', fontSize: 15 }}>
                 📅 {form.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -207,6 +211,7 @@ export default function ExpensesScreen() {
                     key={c}
                     style={[s.catBtn, form.category === c && { borderColor: CATEGORY_COLORS[c], backgroundColor: CATEGORY_COLORS[c] + '20' }]}
                     onPress={() => setForm(f => ({ ...f, category: c }))}
+                    activeOpacity={0.75}
                   >
                     <Ionicons name={CATEGORY_ICONS[c]} size={14} color={form.category === c ? CATEGORY_COLORS[c] : '#555'} />
                     <Text style={[s.catBtnText, form.category === c && { color: CATEGORY_COLORS[c] }]}>{c}</Text>
@@ -216,10 +221,10 @@ export default function ExpensesScreen() {
             </ScrollView>
             <TextInput style={s.input} placeholder="Note (optional)" placeholderTextColor="#444" value={form.note} onChangeText={v => setForm(f => ({ ...f, note: v }))} />
             <View style={s.modalBtns}>
-              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }} activeOpacity={0.75}>
                 <Text style={s.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.saveBtn} onPress={handleAdd}>
+              <TouchableOpacity style={s.saveBtn} onPress={handleAdd} activeOpacity={0.75}>
                 <Text style={s.saveBtnText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -232,30 +237,30 @@ export default function ExpensesScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0d0d0d' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-  title: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  addBtn: { backgroundColor: '#818cf8', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  monthRow: { paddingHorizontal: 20, gap: 8, marginBottom: 14 },
-  catFilterRow: { paddingHorizontal: 20, gap: 8, marginBottom: 12 },
-  filterTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: '#262626' },
-  filterActive: { backgroundColor: '#818cf8', borderColor: '#818cf8' },
-  monthActive: { backgroundColor: '#34d399', borderColor: '#34d399' },
+  safe: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: S.lg, paddingTop: 16, paddingBottom: 12 },
+  title: { color: '#fff', fontSize: T.xl, fontWeight: '800' },
+  addBtn: { backgroundColor: C.purple, borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  monthRow: { paddingHorizontal: S.lg, gap: 8, marginBottom: 14 },
+  catFilterRow: { paddingHorizontal: S.lg, gap: 8, marginBottom: 12 },
+  filterTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  filterActive: { backgroundColor: C.purple, borderColor: C.purple },
+  monthActive: { backgroundColor: C.green, borderColor: C.green },
   filterText: { color: '#555', fontSize: 13 },
-  filterTextActive: { color: '#0d0d0d', fontWeight: '700' },
-  card: { backgroundColor: '#1a1a1a', borderRadius: 20, padding: 22, marginHorizontal: 20, marginBottom: 16, borderWidth: 1, borderColor: '#262626' },
+  filterTextActive: { color: C.bg, fontWeight: '700' },
+  card: { backgroundColor: C.card, borderRadius: 20, padding: 22, marginHorizontal: S.lg, marginBottom: 16, borderWidth: 1, borderColor: C.border },
   cardLabel: { color: '#666', fontSize: 12, letterSpacing: 1 },
-  cardAmount: { color: '#818cf8', fontSize: 36, fontWeight: '800', marginTop: 6 },
+  cardAmount: { color: C.purple, fontSize: 36, fontWeight: '800', marginTop: 6 },
   cardSub: { color: '#444', fontSize: 12, marginTop: 2, marginBottom: 16 },
   catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  catChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#262626', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  catChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.border, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   catChipText: { color: '#888', fontSize: 11 },
   catChipAmt: { fontSize: 11, fontWeight: '700' },
   noData: { color: '#333', fontSize: 13 },
-  list: { paddingHorizontal: 20 },
+  list: { paddingHorizontal: S.lg },
   empty: { alignItems: 'center', marginTop: 60, gap: 12 },
   emptyText: { color: '#333', fontSize: 14 },
-  expRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#262626' },
+  expRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border },
   expIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   expInfo: { flex: 1 },
   expTitle: { color: '#fff', fontWeight: '600', fontSize: 14 },
@@ -264,14 +269,14 @@ const s = StyleSheet.create({
   expAmount: { color: '#fff', fontWeight: '700', fontSize: 15 },
   inputLabel: { color: '#555', fontSize: 12, marginBottom: 8 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
-  modalBox: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
-  input: { backgroundColor: '#262626', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
-  catBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#262626', borderWidth: 1, borderColor: '#333' },
+  modalBox: { backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: S.lg },
+  input: { backgroundColor: C.input, borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
+  catBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: C.border, borderWidth: 1, borderColor: '#333' },
   catBtnText: { color: '#555', fontSize: 12 },
   modalBtns: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#262626', alignItems: 'center' },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.border, alignItems: 'center' },
   cancelBtnText: { color: '#555', fontWeight: '600' },
-  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#818cf8', alignItems: 'center' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.purple, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '800' },
 });

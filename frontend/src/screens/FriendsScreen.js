@@ -25,17 +25,22 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { addFriend, deleteFriend, getFriends } from '../store/friendStore';
 import { getLoans } from '../store/loanStore';
+import { C, S, T } from '../constants';
+import FilterPill from '../components/FilterPill';
+import EmptyState from '../components/EmptyState';
+import LoadingScreen from '../components/LoadingScreen';
 
 const EMPTY_FORM = { name: '', phone: '', upi: '' };
 
 export default function FriendsScreen() {
+  const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState([]);
   const [loanMap, setLoanMap] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [search, setSearch] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const f = await getFriends();
     setFriends(f);
 
@@ -48,9 +53,12 @@ export default function FriendsScreen() {
       map[key] += l.type === 'lent' ? l.amount : -l.amount;
     });
     setLoanMap(map);
-  };
+    setLoading(false);
+  }, []);
 
   useFocusEffect(useCallback(() => { load(); }, []));
+
+  if (loading) return <LoadingScreen />;
 
   const handleAdd = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Enter a name');
@@ -89,8 +97,8 @@ export default function FriendsScreen() {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Friends</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
-          <Ionicons name="add" size={22} color="#0d0d0d" />
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)} activeOpacity={0.75}>
+          <Ionicons name="add" size={22} color={C.bg} />
         </TouchableOpacity>
       </View>
 
@@ -147,8 +155,9 @@ export default function FriendsScreen() {
                   <TouchableOpacity
                     style={s.upiBtn}
                     onPress={() => handleUPI(friend, bal)}
+                    activeOpacity={0.75}
                   >
-                    <Ionicons name="qr-code-outline" size={14} color="#fbbf24" />
+                    <Ionicons name="qr-code-outline" size={14} color={C.yellow} />
                     <Text style={s.upiBtnText}>Pay</Text>
                   </TouchableOpacity>
                 )}
@@ -156,12 +165,13 @@ export default function FriendsScreen() {
                   <TouchableOpacity
                     style={s.remindBtn}
                     onPress={() => Alert.alert('Remind', `Send a reminder to ${friend.name}?`)}
+                    activeOpacity={0.75}
                   >
-                    <Ionicons name="notifications-outline" size={14} color="#818cf8" />
+                    <Ionicons name="notifications-outline" size={14} color={C.purple} />
                     <Text style={s.remindBtnText}>Remind</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => handleDelete(friend.id)}>
+                <TouchableOpacity onPress={() => handleDelete(friend.id)} activeOpacity={0.75}>
                   <Ionicons name="trash-outline" size={16} color="#333" />
                 </TouchableOpacity>
               </View>
@@ -201,10 +211,10 @@ export default function FriendsScreen() {
             />
             <Text style={s.hint}>UPI ID is used to send payments directly from this app</Text>
             <View style={s.modalBtns}>
-              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowModal(false); setForm(EMPTY_FORM); }} activeOpacity={0.75}>
                 <Text style={s.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.saveBtn} onPress={handleAdd}>
+              <TouchableOpacity style={s.saveBtn} onPress={handleAdd} activeOpacity={0.75}>
                 <Text style={s.saveBtnText}>Add</Text>
               </TouchableOpacity>
             </View>
@@ -217,38 +227,38 @@ export default function FriendsScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0d0d0d' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 },
-  title: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  addBtn: { backgroundColor: '#fbbf24', borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 12, marginHorizontal: 20, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12, borderWidth: 1, borderColor: '#262626' },
+  safe: { flex: 1, backgroundColor: C.bg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: S.lg, paddingTop: 16, paddingBottom: 12 },
+  title: { color: '#fff', fontSize: T.xl, fontWeight: '800' },
+  addBtn: { backgroundColor: C.yellow, borderRadius: 20, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 12, marginHorizontal: S.lg, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12, borderWidth: 1, borderColor: C.border },
   searchInput: { flex: 1, color: '#fff', fontSize: 14 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 12 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: S.lg, marginBottom: 12 },
   summaryText: { color: '#444', fontSize: 12 },
-  list: { flex: 1, paddingHorizontal: 20 },
+  list: { flex: 1, paddingHorizontal: S.lg },
   empty: { alignItems: 'center', marginTop: 80, gap: 12 },
   emptyText: { color: '#333', fontSize: 14 },
-  card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#262626' },
+  card: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.border },
   cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#262626', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#fbbf24', fontWeight: '700', fontSize: 16 },
+  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.border, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: C.yellow, fontWeight: '700', fontSize: 16 },
   friendName: { color: '#fff', fontWeight: '600', fontSize: 15 },
   friendSub: { color: '#444', fontSize: 12, marginTop: 2 },
-  balGreen: { color: '#34d399', fontSize: 12, marginTop: 2, fontWeight: '600' },
-  balRed: { color: '#f87171', fontSize: 12, marginTop: 2, fontWeight: '600' },
+  balGreen: { color: C.green, fontSize: 12, marginTop: 2, fontWeight: '600' },
+  balRed: { color: C.red, fontSize: 12, marginTop: 2, fontWeight: '600' },
   cardActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  upiBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fbbf2420', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#fbbf24' },
-  upiBtnText: { color: '#fbbf24', fontSize: 11, fontWeight: '600' },
-  remindBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#818cf820', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#818cf8' },
-  remindBtnText: { color: '#818cf8', fontSize: 11, fontWeight: '600' },
+  upiBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${C.yellow}20`, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: C.yellow },
+  upiBtnText: { color: C.yellow, fontSize: 11, fontWeight: '600' },
+  remindBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: `${C.purple}20`, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: C.purple },
+  remindBtnText: { color: C.purple, fontSize: 11, fontWeight: '600' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.7)' },
-  modalBox: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
-  input: { backgroundColor: '#262626', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
+  modalBox: { backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: S.lg },
+  input: { backgroundColor: C.input, borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12, fontSize: 15 },
   hint: { color: '#333', fontSize: 11, marginBottom: 16 },
   modalBtns: { flexDirection: 'row', gap: 12 },
-  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#262626', alignItems: 'center' },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.border, alignItems: 'center' },
   cancelBtnText: { color: '#555', fontWeight: '600' },
-  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#fbbf24', alignItems: 'center' },
-  saveBtnText: { color: '#0d0d0d', fontWeight: '800' },
+  saveBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: C.yellow, alignItems: 'center' },
+  saveBtnText: { color: C.bg, fontWeight: '800' },
 });

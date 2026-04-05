@@ -7,29 +7,70 @@ flowledger/
         HomeScreen.js
 */
 
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { getBalanceSummary, getLoans } from '../store/loanStore';
+import { getLoans, getBalanceSummary } from '../store/loanStore';
+import { C, S, T } from '../constants';
+import Card from '../components/Card';
+import EmptyState from '../components/EmptyState';
+import LoadingScreen from '../components/LoadingScreen';
+
+const QUICK_ACTIONS = [
+  { label: 'Add Loan', icon: 'add-circle-outline', color: C.green, tab: 'Loans' },
+  { label: 'Add Expense', icon: 'receipt-outline', color: C.purple, tab: 'Expenses' },
+  { label: 'Friends', icon: 'people-outline', color: C.yellow, tab: 'Friends' },
+];
+
+const QuickAction = React.memo(({ item, onPress }) => (
+  <TouchableOpacity style={s.actionBtn} onPress={() => onPress(item.tab)} activeOpacity={0.75}>
+    <Ionicons name={item.icon} size={22} color={item.color} />
+    <Text style={s.actionLabel}>{item.label}</Text>
+  </TouchableOpacity>
+));
+
+const ActivityItem = React.memo(({ item }) => (
+  <View style={s.activityRow}>
+    <View style={s.activityAvatar}>
+      <Text style={s.activityAvatarText}>{item.name[0].toUpperCase()}</Text>
+    </View>
+    <View style={s.activityInfo}>
+      <Text style={s.activityName}>{item.name}</Text>
+      <Text style={s.activityDate}>
+        {new Date(item.createdAt || item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+        {item.note ? ` · ${item.note}` : ''}
+      </Text>
+    </View>
+    <Text style={item.type === 'lent' ? s.amountGreen : s.amountRed}>
+      {item.type === 'lent' ? '+' : '-'}₹{(item.amount - (item.paid || 0)).toLocaleString()}
+    </Text>
+  </View>
+));
 
 export default function HomeScreen({ navigation }) {
   const [summary, setSummary] = useState({ totalLent: 0, totalOwed: 0, net: 0 });
   const [recent, setRecent] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useFocusEffect(useCallback(() => {
-    const load = async () => {
-      const bal = await getBalanceSummary();
-      setSummary(bal);
-      const all = await getLoans();
-      setRecent(all.filter(l => l.status === 'pending').slice(0, 5));
-    };
-    load();
-  }, []));
+  const load = useCallback(async () => {
+    const bal = await getBalanceSummary();
+    setSummary(bal);
+    const all = await getLoans();
+    setRecent(all.filter(l => l.status === 'pending').slice(0, 5));
+    setLoading(false);
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const handleNav = useCallback((tab) => navigation.navigate(tab), [navigation]);
+  const handleProfileNav = useCallback(() => navigation.navigate('Profile'), [navigation]);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  if (loading) return <LoadingScreen />;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -41,117 +82,91 @@ export default function HomeScreen({ navigation }) {
             <Text style={s.greeting}>{greeting} 👋</Text>
             <Text style={s.name}>Mohammad</Text>
           </View>
-          <TouchableOpacity style={s.avatar} onPress={() => navigation.navigate('Profile')}>
+          <TouchableOpacity style={s.avatar} onPress={handleProfileNav} activeOpacity={0.75}>
             <Text style={s.avatarText}>M</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Net Balance Card */}
-        <View style={s.card}>
-          <Text style={s.cardLabel}>NET BALANCE</Text>
-          <Text style={[s.cardAmount, summary.net < 0 && { color: '#f87171' }]}>
+        {/* Balance Card */}
+        <Card style={s.balanceCard}>
+          <Text style={s.balanceLabel}>NET BALANCE</Text>
+          <Text style={[s.balanceAmount, { color: summary.net >= 0 ? C.green : C.red }]}>
             ₹{Math.abs(summary.net).toLocaleString()}
           </Text>
-          <Text style={s.cardSub}>
+          <Text style={s.balanceSub}>
             {summary.net >= 0 ? 'Overall you are owed' : 'Overall you owe'}
           </Text>
-          <View style={s.cardRow}>
-            <View style={s.cardStat}>
-              <Ionicons name="arrow-up-circle" size={18} color="#34d399" />
-              <Text style={s.cardStatLabel}>You lent</Text>
-              <Text style={s.cardStatGreen}>₹{summary.totalLent.toLocaleString()}</Text>
+          <View style={s.balanceRow}>
+            <View style={s.balanceStat}>
+              <Ionicons name="arrow-up-circle" size={16} color={C.green} />
+              <Text style={s.balanceStatLabel}>You lent</Text>
+              <Text style={[s.balanceStatValue, { color: C.green }]}>
+                ₹{summary.totalLent.toLocaleString()}
+              </Text>
             </View>
             <View style={s.divider} />
-            <View style={s.cardStat}>
-              <Ionicons name="arrow-down-circle" size={18} color="#f87171" />
-              <Text style={s.cardStatLabel}>You owe</Text>
-              <Text style={s.cardStatRed}>₹{summary.totalOwed.toLocaleString()}</Text>
+            <View style={s.balanceStat}>
+              <Ionicons name="arrow-down-circle" size={16} color={C.red} />
+              <Text style={s.balanceStatLabel}>You owe</Text>
+              <Text style={[s.balanceStatValue, { color: C.red }]}>
+                ₹{summary.totalOwed.toLocaleString()}
+              </Text>
             </View>
           </View>
-        </View>
+        </Card>
 
         {/* Quick Actions */}
         <View style={s.actions}>
-          {[
-            { label: 'Add Loan', icon: 'add-circle-outline', color: '#34d399', tab: 'Loans' },
-            { label: 'Add Expense', icon: 'receipt-outline', color: '#818cf8', tab: 'Expenses' },
-            { label: 'Friends', icon: 'people-outline', color: '#fbbf24', tab: 'Friends' },
-          ].map((a) => (
-            <TouchableOpacity
-              key={a.label}
-              style={s.actionBtn}
-              onPress={() => navigation.navigate(a.tab)}
-            >
-              <Ionicons name={a.icon} size={24} color={a.color} />
-              <Text style={s.actionLabel}>{a.label}</Text>
-            </TouchableOpacity>
+          {QUICK_ACTIONS.map(item => (
+            <QuickAction key={item.tab} item={item} onPress={handleNav} />
           ))}
         </View>
 
         {/* Recent Activity */}
         <Text style={s.sectionTitle}>Recent Activity</Text>
-        {recent.length === 0 && (
-          <View style={s.empty}>
-            <Text style={s.emptyText}>No active loans yet</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Loans')}>
-              <Text style={s.emptyLink}>Add your first loan →</Text>
-            </TouchableOpacity>
-          </View>
+        {recent.length === 0 ? (
+          <EmptyState
+            icon="wallet-outline"
+            message="No active loans yet"
+            subtext="Add your first loan →"
+          />
+        ) : (
+          recent.map(item => <ActivityItem key={item.id} item={item} />)
         )}
-        {recent.map((item) => (
-          <View key={item.id} style={s.activityRow}>
-            <View style={s.activityAvatar}>
-              <Text style={s.activityAvatarText}>{item.name[0].toUpperCase()}</Text>
-            </View>
-            <View style={s.activityInfo}>
-              <Text style={s.activityName}>{item.name}</Text>
-              <Text style={s.activityDate}>
-                {new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                {item.note ? ` · ${item.note}` : ''}
-              </Text>
-            </View>
-            <Text style={item.type === 'lent' ? s.amountGreen : s.amountRed}>
-              {item.type === 'lent' ? '+' : '-'}₹{item.amount.toLocaleString()}
-            </Text>
-          </View>
-        ))}
-        <View style={{ height: 30 }} />
+
+        <View style={{ height: S.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0d0d0d' },
-  scroll: { flex: 1, paddingHorizontal: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 24 },
-  greeting: { color: '#666', fontSize: 13 },
-  name: { color: '#fff', fontSize: 22, fontWeight: '700', marginTop: 2 },
-  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#34d399', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#0d0d0d', fontWeight: '800', fontSize: 16 },
-  card: { backgroundColor: '#1a1a1a', borderRadius: 20, padding: 22, marginBottom: 24, borderWidth: 1, borderColor: '#262626' },
-  cardLabel: { color: '#666', fontSize: 12, letterSpacing: 1 },
-  cardAmount: { color: '#34d399', fontSize: 38, fontWeight: '800', marginTop: 6 },
-  cardSub: { color: '#444', fontSize: 12, marginTop: 2, marginBottom: 20 },
-  cardRow: { flexDirection: 'row', justifyContent: 'space-around' },
-  cardStat: { alignItems: 'center', gap: 4 },
-  cardStatLabel: { color: '#666', fontSize: 11 },
-  cardStatGreen: { color: '#34d399', fontWeight: '700', fontSize: 15 },
-  cardStatRed: { color: '#f87171', fontWeight: '700', fontSize: 15 },
-  divider: { width: 1, backgroundColor: '#262626' },
-  actions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
-  actionBtn: { flex: 1, backgroundColor: '#1a1a1a', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginHorizontal: 4, borderWidth: 1, borderColor: '#262626', gap: 6 },
-  actionLabel: { color: '#ccc', fontSize: 11 },
-  sectionTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 14 },
-  empty: { alignItems: 'center', paddingVertical: 30, gap: 8 },
-  emptyText: { color: '#333', fontSize: 14 },
-  emptyLink: { color: '#34d399', fontSize: 13 },
-  activityRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a1a1a', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#262626' },
-  activityAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#262626', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  activityAvatarText: { color: '#34d399', fontWeight: '700' },
+  safe: { flex: 1, backgroundColor: C.bg },
+  scroll: { flex: 1, paddingHorizontal: S.lg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: S.base, marginBottom: S.xl },
+  greeting: { color: C.textMuted, fontSize: T.sm },
+  name: { color: C.textPrimary, fontSize: T.xl, fontWeight: T.black, marginTop: 2 },
+  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.green, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: C.bg, fontWeight: T.black, fontSize: T.md },
+  balanceCard: { marginBottom: S.xl },
+  balanceLabel: { color: C.textMuted, fontSize: T.xs, letterSpacing: 1.2, fontWeight: T.bold },
+  balanceAmount: { fontSize: T.xxl + 6, fontWeight: T.black, marginTop: S.sm },
+  balanceSub: { color: C.textMuted, fontSize: T.sm, marginTop: 2, marginBottom: S.lg },
+  balanceRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  balanceStat: { alignItems: 'center', gap: S.xs },
+  balanceStatLabel: { color: C.textMuted, fontSize: T.xs },
+  balanceStatValue: { fontSize: T.base, fontWeight: T.bold },
+  divider: { width: 1, backgroundColor: C.border },
+  actions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: S.xl, gap: S.sm },
+  actionBtn: { flex: 1, backgroundColor: C.card, borderRadius: 14, paddingVertical: S.base, alignItems: 'center', borderWidth: 1, borderColor: C.border, gap: S.sm, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  actionLabel: { color: C.textSecondary, fontSize: T.xs },
+  sectionTitle: { color: C.textPrimary, fontSize: T.md, fontWeight: T.bold, marginBottom: S.md },
+  activityRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, padding: S.base, marginBottom: S.sm, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2 },
+  activityAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.input, justifyContent: 'center', alignItems: 'center', marginRight: S.md },
+  activityAvatarText: { color: C.green, fontWeight: T.bold },
   activityInfo: { flex: 1 },
-  activityName: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  activityDate: { color: '#444', fontSize: 12, marginTop: 2 },
-  amountGreen: { color: '#34d399', fontWeight: '700', fontSize: 15 },
-  amountRed: { color: '#f87171', fontWeight: '700', fontSize: 15 },
+  activityName: { color: C.textPrimary, fontWeight: T.semibold, fontSize: T.base },
+  activityDate: { color: C.textMuted, fontSize: T.sm, marginTop: 2 },
+  amountGreen: { color: C.green, fontWeight: T.bold, fontSize: T.base },
+  amountRed: { color: C.red, fontWeight: T.bold, fontSize: T.base },
 });
